@@ -41,7 +41,8 @@ memantau dari rumah.
 
 ## Modul
 
-1. **Kasir (POS)** — layar jualan, pembayaran tunai/QRIS, riwayat & void.
+1. **Kasir (POS)** — layar jualan, pembayaran tunai/QRIS, riwayat & void,
+   tutup kasir (rekonsiliasi tunai harian).
 2. **Menu & Resep** — menu, varian, harga jual, resep bahan per varian.
 3. **Stok Bahan** — daftar bahan, catat belanja, stok opname, peringatan
    stok menipis.
@@ -69,6 +70,8 @@ memantau dari rumah.
   kembali). Setiap baris menunjuk sumbernya.
 - **expenses (pengeluaran)** — tanggal, kategori, nominal, catatan.
 - **expense_categories** — kategori pengeluaran, bisa ditambah user.
+- **cash_closings (tutup kasir)** — tanggal, tunai menurut sistem, tunai hasil
+  hitung fisik, selisih, catatan, user yang menutup.
 - **profiles + user_permissions** — data user dan daftar hak aksesnya.
 
 ## Perhitungan HPP
@@ -86,14 +89,26 @@ memantau dari rumah.
   laba lewat HPP saat bahan terpakai, bukan saat dibeli — mencegah dobel
   hitung. Modul Pengeluaran hanya untuk biaya non-bahan (listrik, gas, gaji,
   sewa, dll).
+- **Bahan tak tertakar bukan resep.** Bahan yang tidak praktis ditakar per
+  porsi (gas untuk memasak, air galon, sabun) tidak dimasukkan ke resep —
+  dicatat sebagai pengeluaran operasional. HPP adalah estimasi manajemen,
+  bukan akuntansi sempurna; akurasinya dijaga lewat stok opname rutin, bukan
+  dengan menakar segalanya.
 
 ## Alur Layar
 
 ### Kasir
-Grid menu per kategori, tombol besar. Tap menu → pilih varian → keranjang.
-Ubah jumlah / hapus item. Bayar → Tunai (input uang diterima, kembalian
-otomatis) atau QRIS → simpan, potong stok, layar kosong lagi. Riwayat
-transaksi hari ini; void oleh user berizin.
+Grid menu dengan tombol besar; urutan tile mengikuti menu paling laku, bukan
+abjad atau urutan input. Satu tap langsung menambahkan varian yang terakhir
+dipakai untuk menu itu; tombol kecil di tile membuka pemilih varian. Ubah
+jumlah / hapus item. Bayar → Tunai (input uang diterima, kembalian otomatis)
+atau QRIS → simpan, potong stok, layar kosong lagi. Riwayat transaksi hari
+ini; void oleh user berizin.
+
+**Tutup kasir:** di akhir hari, kasir menghitung uang fisik di laci. Sistem
+menampilkan tunai menurut catatan, kasir mengisi hasil hitungan, selisih
+tersimpan beserta catatan dan siapa yang menutup. Selisih tampil di laporan
+harian. Tutup kasir tercakup dalam izin "Kasir".
 
 ### Stok
 Daftar bahan; yang di bawah batas minimum ditandai dan ditampilkan paling
@@ -107,8 +122,8 @@ catatan. Daftar per bulan.
 
 ### Laporan
 Dashboard hari ini: omzet, HPP, pengeluaran, laba bersih, jumlah transaksi,
-rincian tunai vs QRIS, menu terlaris. Pilihan rentang tanggal, rekap bulanan,
-grafik tren laba.
+rincian tunai vs QRIS, selisih tutup kasir, menu terlaris. Pilihan rentang
+tanggal, rekap bulanan, grafik tren laba.
 
 ### Pengguna
 Buat user (email + password), centang hak akses.
