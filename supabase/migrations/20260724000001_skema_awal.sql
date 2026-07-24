@@ -27,7 +27,7 @@ language plpgsql security definer set search_path = public
 as $$
 begin
   insert into public.profiles (id, nama)
-  values (new.id, coalesce(new.raw_user_meta_data ->> 'nama', split_part(new.email, '@', 1)));
+  values (new.id, coalesce(new.raw_user_meta_data ->> 'nama', nullif(split_part(new.email, '@', 1), ''), 'Pengguna Baru'));
   return new;
 end;
 $$;
@@ -240,3 +240,14 @@ create policy "baca tutup kasir" on public.cash_closings
   for select using (public.has_permission(auth.uid(), 'kasir') or public.has_permission(auth.uid(), 'laporan'));
 create policy "catat tutup kasir" on public.cash_closings
   for insert with check (public.has_permission(auth.uid(), 'kasir'));
+
+-- ===== Hak akses Data API =====
+-- Supabase cloud terbaru tidak meng-expose tabel/fungsi schema public secara
+-- otomatis (lihat config.toml: auto_expose_new_tables tidak diset). Tanpa GRANT
+-- eksplisit, role authenticated ditolak di lapisan privilege sebelum RLS sempat
+-- dievaluasi, dan RLS memanggil has_permission() sehingga role juga butuh EXECUTE.
+-- anon sengaja tidak diberi akses tabel: sign-in lewat Auth API, dan semua policy
+-- mensyaratkan auth.uid() is not null.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant execute on all functions in schema public to authenticated;
