@@ -82,6 +82,10 @@ memantau dari rumah.
   mengubah laporan historis.
 - **Laba harian** = total penjualan − total HPP tersimpan − total pengeluaran,
   semua dalam batas hari WIB.
+- **Belanja bahan baku bukan pengeluaran operasional.** Biaya bahan masuk ke
+  laba lewat HPP saat bahan terpakai, bukan saat dibeli — mencegah dobel
+  hitung. Modul Pengeluaran hanya untuk biaya non-bahan (listrik, gas, gaji,
+  sewa, dll).
 
 ## Alur Layar
 
