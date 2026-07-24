@@ -61,6 +61,7 @@ export function FormPengeluaran({
                 type="date"
                 required
                 defaultValue={hariIni}
+                max={hariIni}
                 className={kelasInput}
               />
             </label>

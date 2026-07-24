@@ -9,7 +9,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const pengguna = await getPengguna();
-  if (!pengguna) redirect("/login");
+  if (!pengguna) redirect("/keluar");
   return (
     <div className="flex min-h-screen">
       <Navigasi items={filterNav(pengguna.izin)} nama={pengguna.nama} />

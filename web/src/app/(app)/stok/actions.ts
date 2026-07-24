@@ -31,7 +31,9 @@ export async function simpanBahan(formData: FormData): Promise<HasilAksi> {
     return {
       ok: false,
       pesan:
-        error.code === "23505" ? "Bahan dengan nama itu sudah ada." : error.message,
+        error.code === "23505"
+          ? "Bahan dengan nama itu sudah ada — mungkin sedang nonaktif. Cek daftar nonaktif."
+          : error.message,
     };
   }
   revalidatePath("/stok");

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
+import { tanggalJakarta } from "@/lib/kasir";
 import type { HasilAksi } from "@/lib/aksi";
 
 export async function catatPengeluaran(formData: FormData): Promise<HasilAksi> {
@@ -14,6 +15,9 @@ export async function catatPengeluaran(formData: FormData): Promise<HasilAksi> {
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) {
     return { ok: false, pesan: "Tanggal tidak valid." };
+  }
+  if (tanggal > tanggalJakarta(new Date())) {
+    return { ok: false, pesan: "Tanggal tidak boleh di masa depan." };
   }
   if (!categoryId) return { ok: false, pesan: "Pilih kategori dulu." };
   if (!Number.isInteger(nominal) || nominal <= 0) {

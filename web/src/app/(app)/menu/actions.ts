@@ -21,7 +21,15 @@ export async function simpanMenu(formData: FormData): Promise<HasilAksi> {
       .from("products")
       .update({ nama, kategori })
       .eq("id", id);
-    if (error) return { ok: false, pesan: error.message };
+    if (error) {
+      return {
+        ok: false,
+        pesan:
+          error.code === "23505"
+            ? "Menu dengan nama itu sudah ada — mungkin sedang nonaktif. Cek daftar nonaktif."
+            : error.message,
+      };
+    }
   } else {
     const namaVarian = String(formData.get("nama_varian") ?? "").trim();
     const harga = Number(formData.get("harga"));
@@ -41,7 +49,9 @@ export async function simpanMenu(formData: FormData): Promise<HasilAksi> {
       return {
         ok: false,
         pesan:
-          error.code === "23505" ? "Menu dengan nama itu sudah ada." : error.message,
+          error.code === "23505"
+            ? "Menu dengan nama itu sudah ada — mungkin sedang nonaktif. Cek daftar nonaktif."
+            : error.message,
       };
     }
   }

@@ -40,5 +40,5 @@ revoke execute on function public.buat_menu(text, text, text, integer) from publ
 grant execute on function public.buat_menu(text, text, text, integer) to authenticated;
 
 -- Cegah nama ganda (abaikan besar-kecil huruf) pada bahan & menu.
-create unique index ingredients_nama_unik on public.ingredients (lower(nama));
-create unique index products_nama_unik on public.products (lower(nama));
+create unique index if not exists ingredients_nama_unik on public.ingredients (lower(nama));
+create unique index if not exists products_nama_unik on public.products (lower(nama));

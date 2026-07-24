@@ -36,7 +36,7 @@ export const getPengguna = cache(async (): Promise<Pengguna | null> => {
 
 export async function wajibIzin(butuh: Izin): Promise<Pengguna> {
   const pengguna = await getPengguna();
-  if (!pengguna) redirect("/login");
+  if (!pengguna) redirect("/keluar");
   if (!bolehAkses(pengguna.izin, butuh)) redirect("/");
   return pengguna;
 }

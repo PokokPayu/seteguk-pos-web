@@ -18,7 +18,7 @@ returns table (
 language sql stable set search_path = public
 as $$
   with hari as (
-    select generate_series(p_dari, p_sampai, interval '1 day')::date as tanggal
+    select generate_series(p_dari::timestamp, p_sampai::timestamp, interval '1 day')::date as tanggal
   ),
   jual as (
     select

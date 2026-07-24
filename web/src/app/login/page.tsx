@@ -3,9 +3,9 @@ import { masuk } from "./actions";
 export default async function HalamanLogin({
   searchParams,
 }: {
-  searchParams: Promise<{ gagal?: string }>;
+  searchParams: Promise<{ gagal?: string; nonaktif?: string }>;
 }) {
-  const { gagal } = await searchParams;
+  const { gagal, nonaktif } = await searchParams;
   return (
     <main className="min-h-screen grid place-items-center bg-[#F5F1E6] p-4">
       <form
@@ -19,6 +19,11 @@ export default async function HalamanLogin({
         {gagal ? (
           <p className="mt-3 rounded-lg border border-[#EAC6BB] bg-[#F9E9E4] px-3 py-2 text-sm text-[#C2452D]">
             Email atau kata sandi salah. Coba lagi.
+          </p>
+        ) : null}
+        {nonaktif ? (
+          <p className="mt-3 rounded-lg border border-[#EAC6BB] bg-[#F9E9E4] px-3 py-2 text-sm text-[#C2452D]">
+            Akun Anda dinonaktifkan. Hubungi pemilik warung.
           </p>
         ) : null}
         <label className="mt-5 block text-sm font-semibold text-[#7A7260]">
