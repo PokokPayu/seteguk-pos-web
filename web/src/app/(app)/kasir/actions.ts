@@ -48,22 +48,20 @@ export async function catatPenjualan(
   });
   if (error) return { ok: false, pesan: error.message };
 
-  const hasil = data as { total?: unknown; kembalian?: unknown } | null;
-
-  // Penjualan tidak pernah diblokir walau stok jadi minus (spec) — beri tahu
-  // kasir bahan mana yang minus supaya diopname.
-  const { data: minus } = await supabase
-    .from("ingredients")
-    .select("nama")
-    .eq("aktif", true)
-    .lt("stok", 0)
-    .order("nama");
+  const hasil = data as {
+    total?: unknown;
+    kembalian?: unknown;
+    stok_minus?: unknown;
+  } | null;
+  const stokMinus = Array.isArray(hasil?.stok_minus)
+    ? hasil.stok_minus.map(String)
+    : [];
 
   revalidatePath("/kasir");
   revalidatePath("/stok");
   return {
     ok: true,
-    stokMinus: ((minus ?? []) as { nama: string }[]).map((b) => b.nama),
+    stokMinus,
     total: Number(hasil?.total ?? 0),
     kembalian: Number(hasil?.kembalian ?? 0),
   };
