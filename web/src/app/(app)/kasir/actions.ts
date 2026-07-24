@@ -7,7 +7,7 @@ import { awalHariJakarta, tanggalJakarta } from "@/lib/kasir";
 import type { HasilAksi } from "@/lib/aksi";
 
 export type HasilPenjualan =
-  | { ok: true; stokMinus: string[] }
+  | { ok: true; stokMinus: string[]; total: number; kembalian: number }
   | { ok: false; pesan: string };
 
 export async function catatPenjualan(
@@ -28,14 +28,27 @@ export async function catatPenjualan(
   ) {
     return { ok: false, pesan: "Uang diterima tidak valid." };
   }
+  const itemValid = items.every(
+    (i) =>
+      typeof i.variantId === "string" &&
+      i.variantId.length > 0 &&
+      Number.isInteger(i.qty) &&
+      i.qty > 0 &&
+      i.qty <= 999
+  );
+  if (!itemValid) {
+    return { ok: false, pesan: "Item pesanan tidak valid." };
+  }
 
   const supabase = await buatClientServer();
-  const { error } = await supabase.rpc("catat_penjualan", {
+  const { data, error } = await supabase.rpc("catat_penjualan", {
     p_metode: metode,
     p_uang_diterima: metode === "tunai" ? uangDiterima : null,
     p_items: items.map((i) => ({ variant_id: i.variantId, qty: i.qty })),
   });
   if (error) return { ok: false, pesan: error.message };
+
+  const hasil = data as { total?: unknown; kembalian?: unknown } | null;
 
   // Penjualan tidak pernah diblokir walau stok jadi minus (spec) — beri tahu
   // kasir bahan mana yang minus supaya diopname.
@@ -51,6 +64,8 @@ export async function catatPenjualan(
   return {
     ok: true,
     stokMinus: ((minus ?? []) as { nama: string }[]).map((b) => b.nama),
+    total: Number(hasil?.total ?? 0),
+    kembalian: Number(hasil?.kembalian ?? 0),
   };
 }
 

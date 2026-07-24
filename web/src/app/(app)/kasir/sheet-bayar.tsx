@@ -26,7 +26,7 @@ export function SheetBayar({
   const [diterima, setDiterima] = useState("");
 
   const angka = Number(diterima);
-  const valid = Number.isFinite(angka) && angka >= 0;
+  const valid = Number.isInteger(angka) && angka >= 0;
   const kembalian = valid ? hitungKembalian(total, angka) : 0;
   const kurang = metode === "tunai" && (!valid || angka < total);
 

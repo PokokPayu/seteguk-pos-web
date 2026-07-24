@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import { totalKeranjang } from "@/lib/kasir";
 import { catatPenjualan } from "./actions";
@@ -44,6 +44,20 @@ export function LayarKasir({
   const [sukses, setSukses] = useState("");
   const [stokMinus, setStokMinus] = useState<string[]>([]);
 
+  // Urutan tile dibekukan pada saat pertama dimuat: revalidatePath setelah
+  // tiap transaksi menyegarkan `produk` (peringkat_varian re-ranking), tapi
+  // tile tidak boleh bergeser posisi selagi kasir bekerja (bahaya salah tap
+  // di layar sentuh). Data (harga, terjual, dsb) tetap ikut refresh.
+  const [urutanAwal] = useState(() => produk.map((p) => p.id));
+  const produkTerurut = useMemo(() => {
+    const posisi = new Map(urutanAwal.map((id, i) => [id, i]));
+    return [...produk].sort(
+      (a, b) =>
+        (posisi.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+        (posisi.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+    );
+  }, [produk, urutanAwal]);
+
   function tambah(produkId: string, variantId: string) {
     const p = produk.find((x) => x.id === produkId);
     const v = p?.varian.find((x) => x.id === variantId);
@@ -79,7 +93,6 @@ export function LayarKasir({
   }
 
   async function bayar(metode: "tunai" | "qris", uangDiterima: number | null) {
-    const total = totalKeranjang(keranjang);
     setSibuk(true);
     const hasil = await catatPenjualan(
       metode,
@@ -93,7 +106,7 @@ export function LayarKasir({
     }
     setSukses(
       metode === "tunai" && uangDiterima !== null
-        ? `Kembalian ${formatRupiah(uangDiterima - total)}`
+        ? `Kembalian ${formatRupiah(hasil.kembalian)}`
         : "Pembayaran QRIS tercatat"
     );
     setStokMinus(hasil.stokMinus);
@@ -137,7 +150,7 @@ export function LayarKasir({
         ) : (
           <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
             <GridMenu
-              produk={produk}
+              produk={produkTerurut}
               varianDefault={varianDefault}
               onTambah={tambah}
               onPilihVarian={(produkId, variantId) =>
@@ -156,17 +169,19 @@ export function LayarKasir({
         )}
       </div>
 
-      <SheetBayar
-        buka={bukaBayar}
-        total={totalKeranjang(keranjang)}
-        sibuk={sibuk}
-        pesan={pesan}
-        onTutup={() => {
-          setBukaBayar(false);
-          setPesan("");
-        }}
-        onBayar={bayar}
-      />
+      {bukaBayar ? (
+        <SheetBayar
+          buka
+          total={totalKeranjang(keranjang)}
+          sibuk={sibuk}
+          pesan={pesan}
+          onTutup={() => {
+            setBukaBayar(false);
+            setPesan("");
+          }}
+          onBayar={bayar}
+        />
+      ) : null}
 
       {sukses ? (
         <button

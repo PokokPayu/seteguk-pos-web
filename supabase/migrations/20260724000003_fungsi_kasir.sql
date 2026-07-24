@@ -8,7 +8,7 @@ create or replace function public.catat_penjualan(
   p_uang_diterima integer,
   p_items jsonb
 )
-returns uuid
+returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 declare
@@ -20,6 +20,7 @@ declare
   v_produk_nama text;
   v_hpp numeric(12,2);
   v_pakai record;
+  v_kembalian integer;
 begin
   if not public.has_permission(auth.uid(), 'kasir') then
     raise exception 'butuh izin kasir';
@@ -74,9 +75,10 @@ begin
     if p_uang_diterima is null or p_uang_diterima < v_total then
       raise exception 'uang diterima kurang dari total';
     end if;
+    v_kembalian := p_uang_diterima - v_total;
     update public.sales
     set uang_diterima = p_uang_diterima,
-        kembalian = p_uang_diterima - v_total
+        kembalian = v_kembalian
     where id = v_sale_id;
   end if;
 
@@ -99,7 +101,7 @@ begin
       (v_pakai.ingredient_id, 'penjualan', -v_pakai.pakai, v_sale_id, auth.uid());
   end loop;
 
-  return v_sale_id;
+  return jsonb_build_object('sale_id', v_sale_id, 'total', v_total, 'kembalian', coalesce(v_kembalian, 0));
 end;
 $$;
 
@@ -109,19 +111,26 @@ language plpgsql security definer set search_path = public
 as $$
 declare
   v_status text;
+  v_waktu timestamptz;
   v_mv record;
 begin
   if not public.has_permission(auth.uid(), 'void') then
     raise exception 'butuh izin void';
   end if;
 
-  select status into v_status
+  select status, waktu into v_status, v_waktu
   from public.sales where id = p_sale_id for update;
   if not found then
     raise exception 'transaksi tidak ditemukan';
   end if;
   if v_status <> 'selesai' then
     raise exception 'transaksi sudah dibatalkan';
+  end if;
+  if exists (
+    select 1 from public.cash_closings
+    where tanggal = (v_waktu at time zone 'Asia/Jakarta')::date
+  ) then
+    raise exception 'kasir tanggal transaksi ini sudah ditutup';
   end if;
 
   update public.sales set status = 'void' where id = p_sale_id;
@@ -172,6 +181,17 @@ as $$
     and s.waktu >= now() - interval '30 days'
   group by si.variant_id, pv.product_id;
 $$;
+
+-- Index untuk lookup pembalikan stok saat void_penjualan (filter by ref_id).
+create index stock_movements_ref_idx on public.stock_movements (ref_id) where ref_id is not null;
+
+-- Tutup celah insert langsung: catat_penjualan (security definer) adalah
+-- satu-satunya jalur tulis yang sah untuk sales/sale_items — lewat RPC ini
+-- HPP dibekukan, stok dipotong, dan ledger stock_movements ikut tercatat.
+-- Policy insert langsung sebelumnya memungkinkan pengguna ber-izin kasir
+-- memotong jalur ini lewat Data API (forged hpp, tanpa potong stok/ledger).
+drop policy if exists "catat penjualan" on public.sales;
+drop policy if exists "catat item penjualan" on public.sale_items;
 
 -- GRANT eksplisit: migrasi terdahulu hanya meng-grant fungsi yang ada saat itu.
 revoke execute on function public.catat_penjualan(text, integer, jsonb) from public, anon;
