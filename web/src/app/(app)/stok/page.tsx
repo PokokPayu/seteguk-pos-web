@@ -2,6 +2,8 @@ import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
 import { formatJumlah, formatRupiahDesimal } from "@/lib/format";
 import { FormBahan } from "./form-bahan";
+import { FormBelanja } from "./form-belanja";
+import { FormOpname } from "./form-opname";
 import type { Bahan } from "./jenis";
 
 export default async function HalamanStok() {
@@ -30,6 +32,8 @@ export default async function HalamanStok() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <FormOpname bahan={aktif} />
+          <FormBelanja bahan={aktif} />
           <FormBahan />
         </div>
       </div>
