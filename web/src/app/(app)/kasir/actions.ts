@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
+import { awalHariJakarta, tanggalJakarta } from "@/lib/kasir";
 import type { HasilAksi } from "@/lib/aksi";
 
 export type HasilPenjualan =
@@ -63,5 +64,57 @@ export async function voidPenjualan(saleId: string): Promise<HasilAksi> {
   if (error) return { ok: false, pesan: error.message };
   revalidatePath("/kasir");
   revalidatePath("/stok");
+  return { ok: true };
+}
+
+export async function tutupKasir(
+  tunaiFisik: number,
+  catatan: string
+): Promise<HasilAksi> {
+  const pengguna = await wajibIzin("kasir");
+  if (!Number.isInteger(tunaiFisik) || tunaiFisik < 0) {
+    return { ok: false, pesan: "Jumlah tunai fisik tidak valid." };
+  }
+
+  const supabase = await buatClientServer();
+  const sekarang = new Date();
+
+  // Tunai sistem = total penjualan TUNAI berstatus selesai hari ini (WIB).
+  // Dihitung ulang di server — jangan percaya angka dari klien.
+  const { data, error } = await supabase
+    .from("sales")
+    .select("sale_items(qty, harga)")
+    .eq("metode", "tunai")
+    .eq("status", "selesai")
+    .gte("waktu", awalHariJakarta(sekarang));
+  if (error) return { ok: false, pesan: error.message };
+
+  const baris = (data ?? []) as {
+    sale_items: { qty: number; harga: number }[] | null;
+  }[];
+  const tunaiSistem = baris.reduce(
+    (s, b) => s + (b.sale_items ?? []).reduce((x, i) => x + i.qty * i.harga, 0),
+    0
+  );
+
+  const { error: errSimpan } = await supabase.from("cash_closings").insert({
+    tanggal: tanggalJakarta(sekarang),
+    tunai_sistem: tunaiSistem,
+    tunai_fisik: tunaiFisik,
+    selisih: tunaiFisik - tunaiSistem,
+    catatan,
+    created_by: pengguna.id,
+  });
+  if (errSimpan) {
+    // 23505 = unique_violation pada kolom tanggal (satu penutupan per hari)
+    return {
+      ok: false,
+      pesan:
+        errSimpan.code === "23505"
+          ? "Kasir hari ini sudah ditutup."
+          : errSimpan.message,
+    };
+  }
+  revalidatePath("/kasir");
   return { ok: true };
 }

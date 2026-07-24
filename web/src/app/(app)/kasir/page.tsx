@@ -1,7 +1,7 @@
 import { bolehAkses } from "@/lib/permissions";
 import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
-import { awalHariJakarta } from "@/lib/kasir";
+import { awalHariJakarta, tanggalJakarta } from "@/lib/kasir";
 import { LayarKasir } from "./layar-kasir";
 import type { ProdukKasir, TransaksiRiwayat } from "./jenis";
 
@@ -22,24 +22,30 @@ type BarisPeringkat = {
 export default async function HalamanKasir() {
   const pengguna = await wajibIzin("kasir");
   const supabase = await buatClientServer();
-  const [produkRes, varianRes, peringkatRes, riwayatRes] = await Promise.all([
-    supabase
-      .from("products")
-      .select("id, nama, kategori")
-      .eq("aktif", true)
-      .order("nama"),
-    supabase
-      .from("product_variants")
-      .select("id, product_id, nama, harga")
-      .eq("aktif", true)
-      .order("nama"),
-    supabase.rpc("peringkat_varian"),
-    supabase
-      .from("sales")
-      .select("id, waktu, metode, status, sale_items(nama_snapshot, qty, harga)")
-      .gte("waktu", awalHariJakarta(new Date()))
-      .order("waktu", { ascending: false }),
-  ]);
+  const [produkRes, varianRes, peringkatRes, riwayatRes, tutupRes] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select("id, nama, kategori")
+        .eq("aktif", true)
+        .order("nama"),
+      supabase
+        .from("product_variants")
+        .select("id, product_id, nama, harga")
+        .eq("aktif", true)
+        .order("nama"),
+      supabase.rpc("peringkat_varian"),
+      supabase
+        .from("sales")
+        .select("id, waktu, metode, status, sale_items(nama_snapshot, qty, harga)")
+        .gte("waktu", awalHariJakarta(new Date()))
+        .order("waktu", { ascending: false }),
+      supabase
+        .from("cash_closings")
+        .select("tunai_fisik, selisih")
+        .eq("tanggal", tanggalJakarta(new Date()))
+        .maybeSingle(),
+    ]);
   if (produkRes.error) {
     throw new Error(`Gagal memuat menu: ${produkRes.error.message}`);
   }
@@ -51,6 +57,9 @@ export default async function HalamanKasir() {
   }
   if (riwayatRes.error) {
     throw new Error(`Gagal memuat riwayat: ${riwayatRes.error.message}`);
+  }
+  if (tutupRes.error) {
+    throw new Error(`Gagal memuat tutup kasir: ${tutupRes.error.message}`);
   }
 
   const produk = (produkRes.data ?? []) as BarisProduk[];
@@ -72,6 +81,17 @@ export default async function HalamanKasir() {
       items: baris.sale_items ?? [],
     };
   }) as TransaksiRiwayat[];
+
+  const tunaiSistem = riwayat
+    .filter((t) => t.status === "selesai" && t.metode === "tunai")
+    .reduce(
+      (s, t) => s + t.items.reduce((x, i) => x + i.qty * i.harga, 0),
+      0
+    );
+  const sudahDitutup = (tutupRes.data ?? null) as {
+    tunai_fisik: number;
+    selisih: number;
+  } | null;
 
   const terjualVarian = new Map<string, number>();
   const terjual30Produk = new Map<string, number>();
@@ -118,6 +138,8 @@ export default async function HalamanKasir() {
           produk={daftar}
           riwayat={riwayat}
           bolehVoid={bolehAkses(pengguna.izin, "void")}
+          tunaiSistem={tunaiSistem}
+          sudahDitutup={sudahDitutup}
         />
       </div>
     </div>

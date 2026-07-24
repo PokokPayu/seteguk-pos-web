@@ -7,6 +7,7 @@ import { catatPenjualan } from "./actions";
 import { GridMenu } from "./grid-menu";
 import { Keranjang } from "./keranjang";
 import { SheetBayar } from "./sheet-bayar";
+import { SheetTutupKasir } from "./sheet-tutup-kasir";
 import { Riwayat } from "./riwayat";
 import type { BarisKeranjang, ProdukKasir, TransaksiRiwayat } from "./jenis";
 
@@ -23,10 +24,14 @@ export function LayarKasir({
   produk,
   riwayat,
   bolehVoid,
+  tunaiSistem,
+  sudahDitutup,
 }: {
   produk: ProdukKasir[];
   riwayat: TransaksiRiwayat[];
   bolehVoid: boolean;
+  tunaiSistem: number;
+  sudahDitutup: { tunai_fisik: number; selisih: number } | null;
 }) {
   const [tab, setTab] = useState<"jual" | "riwayat">("jual");
   const [keranjang, setKeranjang] = useState<BarisKeranjang[]>([]);
@@ -99,23 +104,31 @@ export function LayarKasir({
 
   return (
     <div>
-      <div className="flex gap-2 border-b border-[var(--garis)]">
-        {(["jual", "riwayat"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-bold ${
-              tab === t
-                ? "border-[var(--hijau)] text-[var(--hijau-tua)]"
-                : "border-transparent text-[var(--pudar)]"
-            }`}
-          >
-            {t === "jual"
-              ? "Jual"
-              : `Riwayat (${riwayat.filter((r) => r.status === "selesai").length})`}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--garis)]">
+        <div className="flex gap-2">
+          {(["jual", "riwayat"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-bold ${
+                tab === t
+                  ? "border-[var(--hijau)] text-[var(--hijau-tua)]"
+                  : "border-transparent text-[var(--pudar)]"
+              }`}
+            >
+              {t === "jual"
+                ? "Jual"
+                : `Riwayat (${riwayat.filter((r) => r.status === "selesai").length})`}
+            </button>
+          ))}
+        </div>
+        <div className="pb-1.5">
+          <SheetTutupKasir
+            tunaiSistem={tunaiSistem}
+            sudahDitutup={sudahDitutup}
+          />
+        </div>
       </div>
 
       <div className="mt-4">
