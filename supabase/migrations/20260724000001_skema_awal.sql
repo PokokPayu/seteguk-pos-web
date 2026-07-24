@@ -210,14 +210,13 @@ create policy "baca pergerakan" on public.stock_movements
 create policy "catat pergerakan" on public.stock_movements
   for insert with check (public.has_permission(auth.uid(), 'stok'));
 
--- penjualan: catat butuh 'kasir'; baca butuh 'kasir' atau 'laporan';
--- void (update status) butuh 'void'
+-- penjualan: catat butuh 'kasir'; baca butuh 'kasir' atau 'laporan'.
+-- Sales append-only via Data API — tanpa policy UPDATE, baris tak bisa diubah/di-tamper
+-- dari klien. Void ditangani fungsi RPC security-definer di Rencana 3 (bukan UPDATE langsung).
 create policy "baca penjualan" on public.sales
   for select using (public.has_permission(auth.uid(), 'kasir') or public.has_permission(auth.uid(), 'laporan'));
 create policy "catat penjualan" on public.sales
   for insert with check (public.has_permission(auth.uid(), 'kasir'));
-create policy "void penjualan" on public.sales
-  for update using (public.has_permission(auth.uid(), 'void'));
 
 create policy "baca item penjualan" on public.sale_items
   for select using (public.has_permission(auth.uid(), 'kasir') or public.has_permission(auth.uid(), 'laporan'));
