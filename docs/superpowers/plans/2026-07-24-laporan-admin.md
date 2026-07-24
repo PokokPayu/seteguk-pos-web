@@ -1922,23 +1922,117 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 9: Utang teknis UI — peringatan stok minus per transaksi
 
 **Files:**
-- Modify: `supabase/migrations/20260724000003_fungsi_kasir.sql` (kembalikan bahan minus dari transaksi ini)
+- Create: `supabase/migrations/20260724000006_stok_minus_transaksi.sql`
 - Modify: `web/src/app/(app)/kasir/actions.ts` (pakai daftar dari RPC)
 
 **Interfaces:**
 - Consumes: `catat_penjualan` (Rencana 3).
+- Produces: `catat_penjualan` versi baru yang ikut mengembalikan `stok_minus` (array nama bahan yang menjadi minus **akibat transaksi ini**).
 
-Catatan: migrasi `20260724000003` **belum pernah diterapkan** ke database mana pun, jadi boleh diubah di tempat.
+**PENTING — jangan ubah `20260724000003` di tempat.** Migrasi itu mungkin sudah diterapkan ke produksi (user diminta `supabase db push` setelah Rencana 3). Mengedit migrasi yang sudah diterapkan **tidak berefek apa pun** — Supabase melacak migrasi berdasarkan nama, jadi file yang diubah tidak dijalankan ulang dan perubahannya hilang diam-diam. Karena itu task ini membuat migrasi BARU berisi `create or replace` fungsi utuh, yang benar baik migrasi lama sudah diterapkan maupun belum.
 
-- [ ] **Step 1: Kembalikan bahan minus dari transaksi ini**
+- [ ] **Step 1: Migrasi baru — catat_penjualan mengembalikan stok_minus**
 
-Di `supabase/migrations/20260724000003_fungsi_kasir.sql`, di dalam `catat_penjualan`:
-
-Tambahkan deklarasi `v_minus text[] := '{}';` di blok `declare`.
-
-Di dalam loop pemotongan stok, ganti blok `update public.ingredients … ;` (yang mengurangi stok) menjadi:
+Create `supabase/migrations/20260724000006_stok_minus_transaksi.sql` (fungsi utuh; hanya bagian pemotongan stok dan `return` yang berbeda dari versi sebelumnya):
 
 ```sql
+-- Ganti catat_penjualan agar peringatan stok minus hanya menyebut bahan yang
+-- menjadi minus AKIBAT transaksi ini, bukan semua bahan yang sedang minus
+-- (sebelumnya peringatan muncul terus-menerus sampai diopname).
+-- Dibuat sebagai migrasi baru (create or replace) supaya tetap berlaku
+-- walau migrasi 20260724000003 sudah terlanjur diterapkan.
+create or replace function public.catat_penjualan(
+  p_metode text,
+  p_uang_diterima integer,
+  p_items jsonb
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_sale_id uuid;
+  v_total integer := 0;
+  v_item jsonb;
+  v_qty integer;
+  v_varian public.product_variants%rowtype;
+  v_produk_nama text;
+  v_hpp numeric(12,2);
+  v_pakai record;
+  v_kembalian integer;
+  v_minus text[] := '{}';
+  v_nama_bahan text;
+  v_stok_baru numeric;
+begin
+  if not public.has_permission(auth.uid(), 'kasir') then
+    raise exception 'butuh izin kasir';
+  end if;
+  if p_metode is null or p_metode not in ('tunai','qris') then
+    raise exception 'metode pembayaran tidak valid';
+  end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array'
+     or jsonb_array_length(p_items) = 0 then
+    raise exception 'keranjang kosong';
+  end if;
+
+  insert into public.sales (metode, status, created_by)
+  values (p_metode, 'selesai', auth.uid())
+  returning id into v_sale_id;
+
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_qty := (v_item ->> 'qty')::integer;
+    if v_qty is null or v_qty <= 0 then
+      raise exception 'jumlah item harus lebih dari 0';
+    end if;
+
+    select * into v_varian
+    from public.product_variants
+    where id = (v_item ->> 'variant_id')::uuid and aktif;
+    if not found then
+      raise exception 'varian tidak ditemukan atau nonaktif';
+    end if;
+
+    select nama into v_produk_nama
+    from public.products where id = v_varian.product_id;
+
+    -- HPP dibekukan: resep x harga rata-rata bahan SAAT INI
+    select coalesce(round(sum(ri.qty * i.harga_rata), 2), 0)
+      into v_hpp
+    from public.recipe_items ri
+    join public.ingredients i on i.id = ri.ingredient_id
+    where ri.variant_id = v_varian.id;
+
+    insert into public.sale_items
+      (sale_id, variant_id, nama_snapshot, qty, harga, hpp)
+    values
+      (v_sale_id, v_varian.id,
+       btrim(coalesce(v_produk_nama,'') || ' ' || v_varian.nama),
+       v_qty, v_varian.harga, v_hpp);
+
+    v_total := v_total + v_qty * v_varian.harga;
+  end loop;
+
+  if p_metode = 'tunai' then
+    if p_uang_diterima is null or p_uang_diterima < v_total then
+      raise exception 'uang diterima kurang dari total';
+    end if;
+    v_kembalian := p_uang_diterima - v_total;
+    update public.sales
+    set uang_diterima = p_uang_diterima,
+        kembalian = v_kembalian
+    where id = v_sale_id;
+  end if;
+
+  -- Potong stok: agregasi pemakaian per bahan lintas semua item.
+  -- Stok boleh menjadi minus (tidak diblokir) sesuai spec; bahan yang
+  -- menjadi minus dicatat untuk diperingatkan ke kasir.
+  for v_pakai in
+    select ri.ingredient_id, sum(ri.qty * si.qty) as pakai
+    from public.sale_items si
+    join public.recipe_items ri on ri.variant_id = si.variant_id
+    where si.sale_id = v_sale_id
+    group by ri.ingredient_id
+  loop
     update public.ingredients
     set stok = stok - v_pakai.pakai
     where id = v_pakai.ingredient_id
@@ -1947,20 +2041,24 @@ Di dalam loop pemotongan stok, ganti blok `update public.ingredients … ;` (yan
     if v_stok_baru < 0 then
       v_minus := array_append(v_minus, v_nama_bahan);
     end if;
-```
 
-dan tambahkan dua deklarasi pendukung di blok `declare`: `v_nama_bahan text;` dan `v_stok_baru numeric;`.
+    insert into public.stock_movements
+      (ingredient_id, tipe, qty, ref_id, created_by)
+    values
+      (v_pakai.ingredient_id, 'penjualan', -v_pakai.pakai, v_sale_id, auth.uid());
+  end loop;
 
-Terakhir, ganti baris `return` di akhir fungsi menjadi:
-
-```sql
   return jsonb_build_object(
     'sale_id', v_sale_id,
     'total', v_total,
     'kembalian', coalesce(v_kembalian, 0),
     'stok_minus', to_jsonb(v_minus)
   );
+end;
+$$;
 ```
+
+(Argumen fungsi tidak berubah, jadi `grant`/`revoke` dari migrasi 0003 tetap berlaku — tidak perlu diulang.)
 
 - [ ] **Step 2: Pakai daftar itu di action**
 
@@ -1996,7 +2094,7 @@ Expected: 42 passed; build sukses.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add supabase/migrations/20260724000003_fungsi_kasir.sql "web/src/app/(app)/kasir/actions.ts"
+git add supabase/migrations/20260724000006_stok_minus_transaksi.sql "web/src/app/(app)/kasir/actions.ts"
 git commit -m "fix: peringatan stok minus hanya untuk bahan transaksi ini
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -2025,7 +2123,7 @@ cd /Users/arvinfairuz/Documents/seteguk
 npx supabase db push
 git push
 ```
-Verifikasi di dashboard → Database → Functions: `laporan_harian`, `terlaris`, `buat_menu` muncul.
+Verifikasi di dashboard → Database → Functions: `laporan_harian`, `terlaris`, `buat_menu` muncul, dan `catat_penjualan` sudah versi baru (mengembalikan `stok_minus`).
 
 - [ ] **Step 3: Walkthrough** *(user, login owner)*
 
