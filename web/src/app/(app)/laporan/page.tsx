@@ -1,13 +1,145 @@
 import { wajibIzin } from "@/lib/auth";
+import { buatClientServer } from "@/lib/supabase/server";
+import { formatRupiah } from "@/lib/format";
+import { tanggalJakarta } from "@/lib/kasir";
+import {
+  rataPerTransaksi,
+  ringkasRentang,
+  type BarisHarian,
+} from "@/lib/laporan";
+import { PilihRentang } from "./pilih-rentang";
 
-export default async function HalamanLaporan() {
+const TGL = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function HalamanLaporan({
+  searchParams,
+}: {
+  searchParams: Promise<{ dari?: string; sampai?: string }>;
+}) {
   await wajibIzin("laporan");
+  const sp = await searchParams;
+  const hariIni = tanggalJakarta(new Date());
+  const dari = TGL.test(sp.dari ?? "") ? (sp.dari as string) : hariIni;
+  const sampaiMentah = TGL.test(sp.sampai ?? "")
+    ? (sp.sampai as string)
+    : hariIni;
+  const sampai = sampaiMentah < dari ? dari : sampaiMentah;
+
+  const supabase = await buatClientServer();
+  const [harianRes, terlarisRes] = await Promise.all([
+    supabase.rpc("laporan_harian", { p_dari: dari, p_sampai: sampai }),
+    supabase.rpc("terlaris", { p_dari: dari, p_sampai: sampai, p_limit: 5 }),
+  ]);
+  if (harianRes.error) {
+    throw new Error(`Gagal memuat laporan: ${harianRes.error.message}`);
+  }
+  if (terlarisRes.error) {
+    throw new Error(`Gagal memuat terlaris: ${terlarisRes.error.message}`);
+  }
+
+  const harian: BarisHarian[] = (
+    (harianRes.data ?? []) as Record<string, unknown>[]
+  ).map((b) => ({
+    tanggal: String(b.tanggal),
+    omzet: Number(b.omzet),
+    hpp: Number(b.hpp),
+    pengeluaran: Number(b.pengeluaran),
+    laba: Number(b.laba),
+    transaksi: Number(b.transaksi),
+    tunai: Number(b.tunai),
+    qris: Number(b.qris),
+    selisih_kasir: b.selisih_kasir === null ? null : Number(b.selisih_kasir),
+  }));
+  const terlaris = ((terlarisRes.data ?? []) as Record<string, unknown>[]).map(
+    (t) => ({ nama: String(t.nama), terjual: Number(t.terjual) })
+  );
+
+  const r = ringkasRentang(harian);
+  const selisih = harian.reduce(
+    (s, b) => s + (b.selisih_kasir ?? 0),
+    0
+  );
+  const satuHari = dari === sampai;
+
   return (
     <div>
       <h1 className="display text-2xl">Laporan</h1>
-      <p className="mt-2 rounded-xl border border-dashed border-[var(--garis-kuat)] bg-[var(--enamel)] p-6 text-sm text-[var(--pudar)]">
-        Modul ini dibangun di rencana berikutnya.
+      <p className="mt-1 text-sm text-[var(--pudar)]">
+        {satuHari ? `Tanggal ${dari}` : `${dari} s/d ${sampai}`}
       </p>
+      <div className="mt-3">
+        <PilihRentang dari={dari} sampai={sampai} hariIni={hariIni} />
+      </div>
+
+      <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+        <h2 className="display text-lg">Buku kas</h2>
+        <dl className="mt-2 space-y-1.5 text-sm">
+          <div className="flex justify-between">
+            <dt>
+              Omzet penjualan{" "}
+              <span className="text-[var(--pudar)]">
+                ({r.transaksi} transaksi)
+              </span>
+            </dt>
+            <dd className="uang">{formatRupiah(r.omzet)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt>HPP bahan terpakai</dt>
+            <dd className="uang">− {formatRupiah(r.hpp)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt>Pengeluaran operasional</dt>
+            <dd className="uang">− {formatRupiah(r.pengeluaran)}</dd>
+          </div>
+        </dl>
+        <div
+          className={`mt-3 flex items-center justify-between rounded-lg px-3 py-2.5 ${
+            r.laba < 0
+              ? "bg-[#F9E9E4] text-[var(--merah)]"
+              : "bg-[var(--hijau)] text-[#F6F3E6]"
+          }`}
+        >
+          <b>Laba bersih</b>
+          <b className="uang text-lg">{formatRupiah(r.laba)}</b>
+        </div>
+      </section>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {[
+          { l: "Tunai di laci", v: formatRupiah(r.tunai) },
+          { l: "Masuk QRIS", v: formatRupiah(r.qris) },
+          { l: "Transaksi", v: String(r.transaksi) },
+          {
+            l: "Rata-rata / transaksi",
+            v: formatRupiah(rataPerTransaksi(r.omzet, r.transaksi)),
+          },
+          { l: "Selisih tutup kasir", v: formatRupiah(selisih) },
+        ].map((s) => (
+          <div
+            key={s.l}
+            className="rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-3"
+          >
+            <p className="text-xs text-[var(--pudar)]">{s.l}</p>
+            <p className="uang mt-0.5 font-bold">{s.v}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+        <h2 className="display text-lg">Terlaris</h2>
+        <ol className="mt-2 space-y-1 text-sm">
+          {terlaris.map((t, i) => (
+            <li key={t.nama} className="flex items-center gap-2">
+              <span className="w-5 text-[var(--pudar)]">{i + 1}</span>
+              <span className="min-w-0 flex-1">{t.nama}</span>
+              <b className="uang">{t.terjual}×</b>
+            </li>
+          ))}
+          {terlaris.length === 0 ? (
+            <li className="text-[var(--pudar)]">Belum ada penjualan.</li>
+          ) : null}
+        </ol>
+      </section>
     </div>
   );
 }
