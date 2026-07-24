@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { formatRupiah } from "@/lib/format";
+import { totalKeranjang } from "@/lib/kasir";
+import { catatPenjualan } from "./actions";
 import { GridMenu } from "./grid-menu";
 import { Keranjang } from "./keranjang";
+import { SheetBayar } from "./sheet-bayar";
 import type { BarisKeranjang, ProdukKasir } from "./jenis";
 
 function varianTerlaris(produk: ProdukKasir[]): Record<string, string> {
@@ -16,11 +20,14 @@ function varianTerlaris(produk: ProdukKasir[]): Record<string, string> {
 
 export function LayarKasir({ produk }: { produk: ProdukKasir[] }) {
   const [keranjang, setKeranjang] = useState<BarisKeranjang[]>([]);
-  // Default varian per produk: mulai dari varian terlaris, lalu mengikuti
-  // pilihan terakhir kasir selama sesi ini.
   const [varianDefault, setVarianDefault] = useState<Record<string, string>>(
     () => varianTerlaris(produk)
   );
+  const [bukaBayar, setBukaBayar] = useState(false);
+  const [sibuk, setSibuk] = useState(false);
+  const [pesan, setPesan] = useState("");
+  const [sukses, setSukses] = useState("");
+  const [stokMinus, setStokMinus] = useState<string[]>([]);
 
   function tambah(produkId: string, variantId: string) {
     const p = produk.find((x) => x.id === produkId);
@@ -56,6 +63,30 @@ export function LayarKasir({ produk }: { produk: ProdukKasir[] }) {
     );
   }
 
+  async function bayar(metode: "tunai" | "qris", uangDiterima: number | null) {
+    const total = totalKeranjang(keranjang);
+    setSibuk(true);
+    const hasil = await catatPenjualan(
+      metode,
+      uangDiterima,
+      keranjang.map((b) => ({ variantId: b.variantId, qty: b.qty }))
+    );
+    setSibuk(false);
+    if (!hasil.ok) {
+      setPesan(hasil.pesan);
+      return;
+    }
+    setSukses(
+      metode === "tunai" && uangDiterima !== null
+        ? `Kembalian ${formatRupiah(uangDiterima - total)}`
+        : "Pembayaran QRIS tercatat"
+    );
+    setStokMinus(hasil.stokMinus);
+    setKeranjang([]);
+    setPesan("");
+    setBukaBayar(false);
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
       <GridMenu
@@ -66,7 +97,43 @@ export function LayarKasir({ produk }: { produk: ProdukKasir[] }) {
           setVarianDefault((d) => ({ ...d, [produkId]: variantId }))
         }
       />
-      <Keranjang isi={keranjang} onUbahQty={ubahQty} />
+      <Keranjang
+        isi={keranjang}
+        onUbahQty={ubahQty}
+        onBayar={() => {
+          setPesan("");
+          setBukaBayar(true);
+        }}
+      />
+
+      <SheetBayar
+        buka={bukaBayar}
+        total={totalKeranjang(keranjang)}
+        sibuk={sibuk}
+        pesan={pesan}
+        onTutup={() => {
+          setBukaBayar(false);
+          setPesan("");
+        }}
+        onBayar={bayar}
+      />
+
+      {sukses ? (
+        <button
+          type="button"
+          onClick={() => setSukses("")}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--hijau-tua)]/95 p-6 text-center text-[#F6F3E6]"
+        >
+          <span className="display text-3xl">Transaksi tersimpan</span>
+          <span className="uang mt-2 text-xl">{sukses}</span>
+          {stokMinus.length > 0 ? (
+            <span className="mt-4 max-w-sm rounded-lg bg-[var(--kunyit)] px-3 py-2 text-sm font-semibold text-[#241F15]">
+              Stok minus: {stokMinus.join(", ")} — segera lakukan opname.
+            </span>
+          ) : null}
+          <span className="mt-6 text-sm opacity-80">Ketuk untuk lanjut</span>
+        </button>
+      ) : null}
     </div>
   );
 }

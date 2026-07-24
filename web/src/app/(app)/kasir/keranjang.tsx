@@ -7,9 +7,11 @@ import type { BarisKeranjang } from "./jenis";
 export function Keranjang({
   isi,
   onUbahQty,
+  onBayar,
 }: {
   isi: BarisKeranjang[];
   onUbahQty: (variantId: string, delta: number) => void;
+  onBayar: () => void;
 }) {
   const total = totalKeranjang(isi);
   const jumlah = isi.reduce((s, b) => s + b.qty, 0);
@@ -73,8 +75,9 @@ export function Keranjang({
       </div>
       <button
         type="button"
-        disabled
-        className="mt-3 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] disabled:opacity-50"
+        disabled={isi.length === 0}
+        onClick={onBayar}
+        className="mt-3 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
       >
         Bayar
       </button>
