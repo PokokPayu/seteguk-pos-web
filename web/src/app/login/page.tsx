@@ -18,7 +18,7 @@ export default async function HalamanLogin({
         <h1 className="text-3xl font-bold text-[#17493B]">SETEGUK</h1>
         {gagal ? (
           <p className="mt-3 rounded-lg border border-[#EAC6BB] bg-[#F9E9E4] px-3 py-2 text-sm text-[#C2452D]">
-            Email atau password salah. Coba lagi.
+            Email atau kata sandi salah. Coba lagi.
           </p>
         ) : null}
         <label className="mt-5 block text-sm font-semibold text-[#7A7260]">
@@ -27,15 +27,17 @@ export default async function HalamanLogin({
             name="email"
             type="email"
             required
+            autoComplete="email"
             className="mt-1 w-full rounded-lg border border-[#CFC5A8] bg-white px-3 py-2 text-[#241F15]"
           />
         </label>
         <label className="mt-3 block text-sm font-semibold text-[#7A7260]">
-          Password
+          Kata sandi
           <input
             name="password"
             type="password"
             required
+            autoComplete="current-password"
             className="mt-1 w-full rounded-lg border border-[#CFC5A8] bg-white px-3 py-2 text-[#241F15]"
           />
         </label>
