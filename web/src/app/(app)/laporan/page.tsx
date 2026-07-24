@@ -3,10 +3,12 @@ import { buatClientServer } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/format";
 import { tanggalJakarta } from "@/lib/kasir";
 import {
+  kelompokBulanan,
   rataPerTransaksi,
   ringkasRentang,
   type BarisHarian,
 } from "@/lib/laporan";
+import { GrafikLaba } from "./grafik-laba";
 import { PilihRentang } from "./pilih-rentang";
 
 const TGL = /^\d{4}-\d{2}-\d{2}$/;
@@ -60,6 +62,7 @@ export default async function HalamanLaporan({
     0
   );
   const satuHari = dari === sampai;
+  const bulanan = kelompokBulanan(harian);
 
   return (
     <div>
@@ -124,6 +127,46 @@ export default async function HalamanLaporan({
           </div>
         ))}
       </div>
+
+      <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+        <GrafikLaba baris={harian} />
+      </section>
+
+      {bulanan.length > 1 ? (
+        <section className="mt-4 overflow-x-auto rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+          <h2 className="display text-lg">Rekap bulanan</h2>
+          <table className="mt-2 w-full min-w-[420px] text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-[var(--pudar)]">
+                <th className="py-1">Bulan</th>
+                <th className="py-1 text-right">Omzet</th>
+                <th className="py-1 text-right">HPP</th>
+                <th className="py-1 text-right">Pengeluaran</th>
+                <th className="py-1 text-right">Laba bersih</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bulanan.map((b) => (
+                <tr key={b.bulan} className="border-t border-[var(--garis)]">
+                  <td className="py-1">{b.bulan}</td>
+                  <td className="uang py-1 text-right">{formatRupiah(b.omzet)}</td>
+                  <td className="uang py-1 text-right">{formatRupiah(b.hpp)}</td>
+                  <td className="uang py-1 text-right">
+                    {formatRupiah(b.pengeluaran)}
+                  </td>
+                  <td
+                    className={`uang py-1 text-right font-bold ${
+                      b.laba < 0 ? "text-[var(--merah)]" : ""
+                    }`}
+                  >
+                    {formatRupiah(b.laba)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
 
       <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
         <h2 className="display text-lg">Terlaris</h2>
