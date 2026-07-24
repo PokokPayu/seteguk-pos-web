@@ -97,14 +97,20 @@ input,select{font:inherit;color:inherit}
 .kat-baris{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .kat-chip{padding:7px 15px;border-radius:99px;border:1.5px solid var(--garis-kuat);font-weight:600;font-size:13.5px;background:var(--enamel)}
 .kat-chip.aktif{background:var(--hijau);border-color:var(--hijau);color:#F6F3E6}
-.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.menu-tile{background:var(--enamel);border:1px solid var(--garis);border-radius:var(--r);padding:13px 13px 11px;text-align:left;display:flex;flex-direction:column;gap:3px;min-height:92px;transition:border-color .12s}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:11px}
+.menu-tile{background:var(--enamel);border:1px solid var(--garis);border-radius:var(--r);padding:14px 14px 12px;text-align:left;display:flex;flex-direction:column;gap:4px;min-height:116px;transition:border-color .12s}
 .menu-tile:hover{border-color:var(--hijau)}
 .menu-tile:active{transform:scale(.985)}
-.menu-tile .nama{font-weight:700;font-size:14.5px;line-height:1.25}
+.menu-tile .nama{font-weight:700;font-size:15.5px;line-height:1.25}
 .menu-tile .kat{font-size:11px;color:var(--pudar);letter-spacing:.06em;text-transform:uppercase}
-.menu-tile .harga{margin-top:auto;font-size:13.5px;color:var(--hijau-tua);font-weight:600}
-.riwayat-blok{margin-top:26px}
+.menu-tile .harga{margin-top:auto;font-size:15px;color:var(--hijau-tua);font-weight:700}
+.tab-kasir{display:inline-flex;border:1.5px solid var(--garis-kuat);border-radius:99px;background:var(--enamel);padding:3px;gap:2px}
+.tab-kasir button{padding:8px 18px;border-radius:99px;font-weight:700;font-size:13.5px;color:var(--pudar)}
+.tab-kasir button.aktif{background:var(--hijau);color:#F6F3E6}
+.tab-n{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,.22);font-family:var(--f-uang);font-size:11px;margin-left:2px}
+.tab-kasir button:not(.aktif) .tab-n{background:#EDE7D6;color:var(--tinta)}
+.riwayat-ringkas{display:flex;gap:20px;padding:6px 2px 10px;color:var(--pudar);font-size:13.5px;border-bottom:1.5px solid var(--garis-kuat)}
+.riwayat-ringkas b{color:var(--tinta);font-family:var(--f-uang)}
 .riwayat-item{display:flex;gap:12px;align-items:center;padding:11px 2px;border-bottom:1px dashed var(--garis-kuat)}
 .riwayat-item .jam{font-family:var(--f-uang);font-size:12.5px;color:var(--pudar);flex:none;width:44px}
 .riwayat-item .isi{flex:1;min-width:0}
@@ -116,7 +122,8 @@ input,select{font:inherit;color:inherit}
 .tbl-void:hover{background:var(--merah-bg)}
 
 /* keranjang */
-.keranjang{position:sticky;top:20px}
+.keranjang{position:sticky;top:20px;display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
+#k-isi{overflow:auto}
 .keranjang-judul{font-family:var(--f-display);font-weight:700;font-size:19px;text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
 .keranjang-kosong{color:var(--pudar);font-size:13.5px;padding:22px 0;text-align:center;border:1.5px dashed var(--garis-kuat);border-radius:8px}
 .k-item{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px dashed var(--garis)}
@@ -127,8 +134,8 @@ input,select{font:inherit;color:inherit}
 .stepper button:hover{border-color:var(--hijau)}
 .stepper .q{width:26px;text-align:center;font-family:var(--f-uang);font-weight:700}
 .k-item .sub{font-family:var(--f-uang);font-size:13px;width:66px;text-align:right;flex:none}
-.k-total{display:flex;justify-content:space-between;align-items:baseline;padding:13px 0 4px;font-weight:700}
-.k-total .uang{font-size:21px}
+.k-total{display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 4px;font-weight:700;border-top:2px solid var(--garis-kuat);margin-top:8px}
+.k-total .uang{font-size:26px}
 .tbl-bayar{width:100%;margin-top:10px;font-size:17px;padding:14px;font-family:var(--f-display);letter-spacing:.06em;text-transform:uppercase}
 .cart-bar{display:none}
 
@@ -318,13 +325,19 @@ input,select{font:inherit;color:inherit}
           <h1 class="layar-judul">Kasir</h1>
           <p class="layar-sub" id="tanggal-kasir"></p>
         </div>
+        <div class="tab-kasir" role="tablist" aria-label="Mode kasir">
+          <button id="tab-jual" class="aktif" role="tab" aria-selected="true">Jual</button>
+          <button id="tab-riwayat" role="tab" aria-selected="false">Riwayat <span class="tab-n" id="tab-riwayat-n">0</span></button>
+        </div>
       </div>
       <div class="kasir-tata">
         <div>
-          <div class="kat-baris" id="kat-baris"></div>
-          <div class="menu-grid" id="menu-grid"></div>
-          <div class="riwayat-blok">
-            <p class="eyebrow" style="margin-bottom:6px">Riwayat hari ini</p>
+          <div id="panel-jual">
+            <div class="kat-baris" id="kat-baris"></div>
+            <div class="menu-grid" id="menu-grid"></div>
+          </div>
+          <div id="panel-riwayat" hidden>
+            <div class="riwayat-ringkas" id="riwayat-ringkas"></div>
             <div id="riwayat-list"></div>
           </div>
         </div>
@@ -803,8 +816,25 @@ $("sb-selesai").addEventListener("click", () => {
 });
 $("sukses").addEventListener("click", () => $("sukses").classList.remove("tampil"));
 
+/* ---- tab jual / riwayat ---- */
+function setTabKasir(t){
+  $("tab-jual").classList.toggle("aktif", t === "jual");
+  $("tab-riwayat").classList.toggle("aktif", t === "riwayat");
+  $("tab-jual").setAttribute("aria-selected", t === "jual");
+  $("tab-riwayat").setAttribute("aria-selected", t === "riwayat");
+  $("panel-jual").hidden = t !== "jual";
+  $("panel-riwayat").hidden = t === "jual";
+}
+$("tab-jual").addEventListener("click", () => setTabKasir("jual"));
+$("tab-riwayat").addEventListener("click", () => setTabKasir("riwayat"));
+
 /* ---- riwayat & void ---- */
 function renderRiwayat(){
+  const sah = SALES.filter(s => s.status === "selesai");
+  const omzet = sah.reduce((t,s) => t + s.items.reduce((x,i) => x + i.qty*i.harga, 0), 0);
+  $("tab-riwayat-n").textContent = sah.length;
+  $("riwayat-ringkas").innerHTML =
+    `<span><b>${sah.length}</b> transaksi selesai</span><span>omzet hari ini <b>${rp(omzet)}</b></span>`;
   const daftar = [...SALES].reverse();
   $("riwayat-list").innerHTML = daftar.map(s => {
     const i = SALES.indexOf(s);
