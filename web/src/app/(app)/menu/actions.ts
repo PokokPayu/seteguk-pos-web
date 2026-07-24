@@ -94,3 +94,34 @@ export async function setAktifVarian(id: string, aktif: boolean): Promise<HasilA
   revalidatePath("/menu");
   return { ok: true };
 }
+
+export async function simpanBarisResep(formData: FormData): Promise<HasilAksi> {
+  await wajibIzin("menu");
+  const variantId = String(formData.get("variant_id") ?? "");
+  const ingredientId = String(formData.get("ingredient_id") ?? "");
+  const qty = Number(formData.get("qty"));
+  if (!variantId || !ingredientId) return { ok: false, pesan: "Pilih bahan dulu." };
+  if (!Number.isFinite(qty) || qty <= 0) {
+    return { ok: false, pesan: "Takaran harus lebih dari 0." };
+  }
+
+  const supabase = await buatClientServer();
+  const { error } = await supabase
+    .from("recipe_items")
+    .upsert(
+      { variant_id: variantId, ingredient_id: ingredientId, qty },
+      { onConflict: "variant_id,ingredient_id" }
+    );
+  if (error) return { ok: false, pesan: error.message };
+  revalidatePath("/menu");
+  return { ok: true };
+}
+
+export async function hapusBarisResep(id: string): Promise<HasilAksi> {
+  await wajibIzin("menu");
+  const supabase = await buatClientServer();
+  const { error } = await supabase.from("recipe_items").delete().eq("id", id);
+  if (error) return { ok: false, pesan: error.message };
+  revalidatePath("/menu");
+  return { ok: true };
+}
