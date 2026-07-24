@@ -1,7 +1,9 @@
+import { bolehAkses } from "@/lib/permissions";
 import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
+import { awalHariJakarta } from "@/lib/kasir";
 import { LayarKasir } from "./layar-kasir";
-import type { ProdukKasir } from "./jenis";
+import type { ProdukKasir, TransaksiRiwayat } from "./jenis";
 
 type BarisProduk = { id: string; nama: string; kategori: string };
 type BarisVarian = {
@@ -18,9 +20,9 @@ type BarisPeringkat = {
 };
 
 export default async function HalamanKasir() {
-  await wajibIzin("kasir");
+  const pengguna = await wajibIzin("kasir");
   const supabase = await buatClientServer();
-  const [produkRes, varianRes, peringkatRes] = await Promise.all([
+  const [produkRes, varianRes, peringkatRes, riwayatRes] = await Promise.all([
     supabase
       .from("products")
       .select("id, nama, kategori")
@@ -32,6 +34,11 @@ export default async function HalamanKasir() {
       .eq("aktif", true)
       .order("nama"),
     supabase.rpc("peringkat_varian"),
+    supabase
+      .from("sales")
+      .select("id, waktu, metode, status, sale_items(nama_snapshot, qty, harga)")
+      .gte("waktu", awalHariJakarta(new Date()))
+      .order("waktu", { ascending: false }),
   ]);
   if (produkRes.error) {
     throw new Error(`Gagal memuat menu: ${produkRes.error.message}`);
@@ -42,10 +49,29 @@ export default async function HalamanKasir() {
   if (peringkatRes.error) {
     throw new Error(`Gagal memuat peringkat: ${peringkatRes.error.message}`);
   }
+  if (riwayatRes.error) {
+    throw new Error(`Gagal memuat riwayat: ${riwayatRes.error.message}`);
+  }
 
   const produk = (produkRes.data ?? []) as BarisProduk[];
   const varian = (varianRes.data ?? []) as BarisVarian[];
   const peringkat = (peringkatRes.data ?? []) as BarisPeringkat[];
+  const riwayat = (riwayatRes.data ?? []).map((t) => {
+    const baris = t as {
+      id: string;
+      waktu: string;
+      metode: "tunai" | "qris";
+      status: "selesai" | "void";
+      sale_items: { nama_snapshot: string; qty: number; harga: number }[] | null;
+    };
+    return {
+      id: baris.id,
+      waktu: baris.waktu,
+      metode: baris.metode,
+      status: baris.status,
+      items: baris.sale_items ?? [],
+    };
+  }) as TransaksiRiwayat[];
 
   const terjualVarian = new Map<string, number>();
   const terjual30Produk = new Map<string, number>();
@@ -88,7 +114,11 @@ export default async function HalamanKasir() {
         Ketuk menu untuk menambah ke pesanan.
       </p>
       <div className="mt-4">
-        <LayarKasir produk={daftar} />
+        <LayarKasir
+          produk={daftar}
+          riwayat={riwayat}
+          bolehVoid={bolehAkses(pengguna.izin, "void")}
+        />
       </div>
     </div>
   );

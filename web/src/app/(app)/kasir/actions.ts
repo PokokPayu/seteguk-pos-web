@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
+import type { HasilAksi } from "@/lib/aksi";
 
 export type HasilPenjualan =
   | { ok: true; stokMinus: string[] }
@@ -50,4 +51,17 @@ export async function catatPenjualan(
     ok: true,
     stokMinus: ((minus ?? []) as { nama: string }[]).map((b) => b.nama),
   };
+}
+
+export async function voidPenjualan(saleId: string): Promise<HasilAksi> {
+  await wajibIzin("void");
+  if (!saleId) return { ok: false, pesan: "Transaksi tidak dikenali." };
+  const supabase = await buatClientServer();
+  const { error } = await supabase.rpc("void_penjualan", {
+    p_sale_id: saleId,
+  });
+  if (error) return { ok: false, pesan: error.message };
+  revalidatePath("/kasir");
+  revalidatePath("/stok");
+  return { ok: true };
 }

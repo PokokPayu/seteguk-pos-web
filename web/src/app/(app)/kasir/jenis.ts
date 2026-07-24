@@ -21,3 +21,17 @@ export type BarisKeranjang = {
   harga: number;
   qty: number;
 };
+
+export type ItemRiwayat = {
+  nama_snapshot: string;
+  qty: number;
+  harga: number;
+};
+
+export type TransaksiRiwayat = {
+  id: string;
+  waktu: string;
+  metode: "tunai" | "qris";
+  status: "selesai" | "void";
+  items: ItemRiwayat[];
+};

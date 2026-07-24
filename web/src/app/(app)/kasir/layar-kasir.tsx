@@ -7,7 +7,8 @@ import { catatPenjualan } from "./actions";
 import { GridMenu } from "./grid-menu";
 import { Keranjang } from "./keranjang";
 import { SheetBayar } from "./sheet-bayar";
-import type { BarisKeranjang, ProdukKasir } from "./jenis";
+import { Riwayat } from "./riwayat";
+import type { BarisKeranjang, ProdukKasir, TransaksiRiwayat } from "./jenis";
 
 function varianTerlaris(produk: ProdukKasir[]): Record<string, string> {
   const awal: Record<string, string> = {};
@@ -18,7 +19,16 @@ function varianTerlaris(produk: ProdukKasir[]): Record<string, string> {
   return awal;
 }
 
-export function LayarKasir({ produk }: { produk: ProdukKasir[] }) {
+export function LayarKasir({
+  produk,
+  riwayat,
+  bolehVoid,
+}: {
+  produk: ProdukKasir[];
+  riwayat: TransaksiRiwayat[];
+  bolehVoid: boolean;
+}) {
+  const [tab, setTab] = useState<"jual" | "riwayat">("jual");
   const [keranjang, setKeranjang] = useState<BarisKeranjang[]>([]);
   const [varianDefault, setVarianDefault] = useState<Record<string, string>>(
     () => varianTerlaris(produk)
@@ -88,23 +98,50 @@ export function LayarKasir({ produk }: { produk: ProdukKasir[] }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-      <GridMenu
-        produk={produk}
-        varianDefault={varianDefault}
-        onTambah={tambah}
-        onPilihVarian={(produkId, variantId) =>
-          setVarianDefault((d) => ({ ...d, [produkId]: variantId }))
-        }
-      />
-      <Keranjang
-        isi={keranjang}
-        onUbahQty={ubahQty}
-        onBayar={() => {
-          setPesan("");
-          setBukaBayar(true);
-        }}
-      />
+    <div>
+      <div className="flex gap-2 border-b border-[var(--garis)]">
+        {(["jual", "riwayat"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-bold ${
+              tab === t
+                ? "border-[var(--hijau)] text-[var(--hijau-tua)]"
+                : "border-transparent text-[var(--pudar)]"
+            }`}
+          >
+            {t === "jual"
+              ? "Jual"
+              : `Riwayat (${riwayat.filter((r) => r.status === "selesai").length})`}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        {tab === "riwayat" ? (
+          <Riwayat transaksi={riwayat} bolehVoid={bolehVoid} />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+            <GridMenu
+              produk={produk}
+              varianDefault={varianDefault}
+              onTambah={tambah}
+              onPilihVarian={(produkId, variantId) =>
+                setVarianDefault((d) => ({ ...d, [produkId]: variantId }))
+              }
+            />
+            <Keranjang
+              isi={keranjang}
+              onUbahQty={ubahQty}
+              onBayar={() => {
+                setPesan("");
+                setBukaBayar(true);
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       <SheetBayar
         buka={bukaBayar}
