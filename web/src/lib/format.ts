@@ -11,5 +11,8 @@ export function formatJumlah(n: number): string {
 }
 
 export function formatRupiahDesimal(n: number): string {
-  return `Rp${n.toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+  const angka = Math.abs(n).toLocaleString("id-ID", {
+    maximumFractionDigits: 2,
+  });
+  return n < 0 ? `−Rp${angka}` : `Rp${angka}`;
 }

@@ -43,4 +43,7 @@ describe("formatRupiahDesimal", () => {
   it("ribuan dengan titik", () => {
     expect(formatRupiahDesimal(1234.5)).toBe("Rp1.234,5");
   });
+  it("negatif dengan minus tipografis di depan Rp", () => {
+    expect(formatRupiahDesimal(-1234.5)).toBe("−Rp1.234,5");
+  });
 });
