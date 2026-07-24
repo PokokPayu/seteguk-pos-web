@@ -31,21 +31,18 @@ export async function simpanMenu(formData: FormData): Promise<HasilAksi> {
     if (!Number.isInteger(harga) || harga < 0) {
       return { ok: false, pesan: "Harga tidak valid." };
     }
-    const { data: produk, error } = await supabase
-      .from("products")
-      .insert({ nama, kategori })
-      .select("id")
-      .single();
-    if (error || !produk) {
-      return { ok: false, pesan: error?.message ?? "Gagal membuat menu." };
-    }
-    const { error: errVarian } = await supabase
-      .from("product_variants")
-      .insert({ product_id: produk.id, nama: namaVarian, harga });
-    if (errVarian) {
-      // varian pertama gagal: hapus produk yatim agar aturan "minimal satu varian" terjaga
-      await supabase.from("products").delete().eq("id", produk.id);
-      return { ok: false, pesan: errVarian.message };
+    const { error } = await supabase.rpc("buat_menu", {
+      p_nama: nama,
+      p_kategori: kategori,
+      p_nama_varian: namaVarian,
+      p_harga: harga,
+    });
+    if (error) {
+      return {
+        ok: false,
+        pesan:
+          error.code === "23505" ? "Menu dengan nama itu sudah ada." : error.message,
+      };
     }
   }
   revalidatePath("/menu");

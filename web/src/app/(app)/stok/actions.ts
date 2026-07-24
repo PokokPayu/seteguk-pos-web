@@ -27,7 +27,13 @@ export async function simpanBahan(formData: FormData): Promise<HasilAksi> {
     : await supabase
         .from("ingredients")
         .insert({ nama, satuan, min_stok: minStok });
-  if (error) return { ok: false, pesan: error.message };
+  if (error) {
+    return {
+      ok: false,
+      pesan:
+        error.code === "23505" ? "Bahan dengan nama itu sudah ada." : error.message,
+    };
+  }
   revalidatePath("/stok");
   return { ok: true };
 }
