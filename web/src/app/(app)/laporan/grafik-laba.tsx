@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { formatRupiah } from "@/lib/format";
-import type { BarisHarian } from "@/lib/laporan";
-
-const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-
-function labelHari(tanggal: string): string {
-  return HARI[new Date(`${tanggal}T00:00:00+07:00`).getUTCDay()] ?? tanggal;
-}
+import { labelHari, type BarisHarian } from "@/lib/laporan";
 
 export function GrafikLaba({ baris }: { baris: BarisHarian[] }) {
   const [tabel, setTabel] = useState(false);

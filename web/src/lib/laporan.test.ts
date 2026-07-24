@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   kelompokBulanan,
+  labelHari,
   rataPerTransaksi,
   ringkasRentang,
   type BarisHarian,
@@ -85,5 +86,19 @@ describe("rataPerTransaksi", () => {
   });
   it("nol transaksi menghasilkan nol, bukan bagi nol", () => {
     expect(rataPerTransaksi(0, 0)).toBe(0);
+  });
+});
+
+describe("labelHari", () => {
+  it("memberi nama hari yang benar", () => {
+    expect(labelHari("2026-07-24")).toBe("Jum");
+    expect(labelHari("2026-07-25")).toBe("Sab");
+    expect(labelHari("2026-07-26")).toBe("Min");
+    expect(labelHari("2026-07-23")).toBe("Kam");
+  });
+  it("tidak mundur satu hari karena offset zona waktu", () => {
+    // regresi: memakai `${t}T00:00:00+07:00` membuat 24 Juli 2026 (Jumat)
+    // terbaca sebagai Kamis
+    expect(labelHari("2026-07-24")).not.toBe("Kam");
   });
 });

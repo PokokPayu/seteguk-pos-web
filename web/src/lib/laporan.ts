@@ -71,3 +71,16 @@ export function kelompokBulanan(
 export function rataPerTransaksi(omzet: number, transaksi: number): number {
   return transaksi > 0 ? omzet / transaksi : 0;
 }
+
+const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
+/**
+ * Label hari untuk tanggal WIB berformat YYYY-MM-DD.
+ * Sengaja memakai sufiks Z: string tanggal ini SUDAH tanggal WIB, jadi
+ * menambahkan offset +07:00 justru menggesernya ke 17:00 UTC hari sebelumnya
+ * dan membuat nama harinya mundur satu hari.
+ */
+export function labelHari(tanggal: string): string {
+  const d = new Date(`${tanggal}T00:00:00Z`);
+  return HARI[d.getUTCDay()] ?? tanggal;
+}
