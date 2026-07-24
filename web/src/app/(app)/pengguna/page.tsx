@@ -1,6 +1,8 @@
 import { wajibIzin } from "@/lib/auth";
 import { buatClientServer } from "@/lib/supabase/server";
+import { buatClientAdmin } from "@/lib/supabase/admin";
 import { KartuPengguna } from "./kartu-pengguna";
+import { FormPenggunaBaru } from "./form-pengguna-baru";
 import type { PenggunaBaris } from "./jenis";
 
 export default async function HalamanPengguna() {
@@ -24,22 +26,39 @@ export default async function HalamanPengguna() {
   }[]) {
     izinPer.set(b.user_id, [...(izinPer.get(b.user_id) ?? []), b.permission]);
   }
+
+  // Email hanya bisa dibaca lewat klien admin; bila belum dikonfigurasi,
+  // kartu tampil tanpa email.
+  const admin = buatClientAdmin();
+  const emailPer = new Map<string, string>();
+  if (admin) {
+    const { data: adminUsers } = await admin.auth.admin.listUsers();
+    for (const u of adminUsers?.users ?? []) {
+      if (u.email) emailPer.set(u.id, u.email);
+    }
+  }
+
   const daftar: PenggunaBaris[] = (
     (profilRes.data ?? []) as { id: string; nama: string; aktif: boolean }[]
   ).map((p) => ({
     id: p.id,
     nama: p.nama,
-    email: "",
+    email: emailPer.get(p.id) ?? "",
     aktif: p.aktif,
     izin: izinPer.get(p.id) ?? [],
   }));
 
   return (
     <div>
-      <h1 className="display text-2xl">Pengguna</h1>
-      <p className="mt-1 text-sm text-[var(--pudar)]">
-        Atur siapa boleh mengakses modul apa. Pengguna nonaktif tidak bisa masuk.
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="display text-2xl">Pengguna</h1>
+          <p className="mt-1 text-sm text-[var(--pudar)]">
+            Atur siapa boleh mengakses modul apa. Pengguna nonaktif tidak bisa masuk.
+          </p>
+        </div>
+        <FormPenggunaBaru />
+      </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {daftar.map((p) => (
           <KartuPengguna key={p.id} pengguna={p} />
