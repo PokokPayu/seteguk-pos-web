@@ -1,0 +1,125 @@
+"use client";
+
+import { useState } from "react";
+import { Lembar } from "@/components/lembar";
+import { setAktifMenu, simpanMenu } from "./actions";
+import type { Produk } from "./jenis";
+
+const kelasInput =
+  "mt-1 w-full rounded-lg border border-[var(--garis-kuat)] bg-white px-3 py-2 text-[var(--tinta)]";
+const kelasLabel = "mt-3 block text-sm font-semibold text-[var(--pudar)]";
+
+export function FormMenu({
+  menu,
+  kategoriAda,
+}: {
+  menu?: Produk;
+  kategoriAda: string[];
+}) {
+  const [buka, setBuka] = useState(false);
+  const [pesan, setPesan] = useState("");
+  const [sibuk, setSibuk] = useState(false);
+
+  async function kirim(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSibuk(true);
+    const hasil = await simpanMenu(new FormData(e.currentTarget));
+    setSibuk(false);
+    if (hasil.ok) {
+      setBuka(false);
+      setPesan("");
+    } else {
+      setPesan(hasil.pesan);
+    }
+  }
+
+  async function gantiAktif() {
+    if (!menu) return;
+    setSibuk(true);
+    const hasil = await setAktifMenu(menu.id, !menu.aktif);
+    setSibuk(false);
+    if (hasil.ok) setBuka(false);
+    else setPesan(hasil.pesan);
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setBuka(true)}
+        className={
+          menu
+            ? "text-sm font-semibold text-[var(--hijau)] underline"
+            : "rounded-lg bg-[var(--hijau)] px-3 py-2 text-sm font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)]"
+        }
+      >
+        {menu ? "Ubah" : "+ Tambah menu"}
+      </button>
+      <Lembar
+        buka={buka}
+        judul={menu ? `Ubah ${menu.nama}` : "Tambah menu"}
+        onTutup={() => setBuka(false)}
+      >
+        <form onSubmit={kirim}>
+          {menu ? <input type="hidden" name="id" value={menu.id} /> : null}
+          <label className={kelasLabel}>
+            Nama menu
+            <input name="nama" required defaultValue={menu?.nama ?? ""} className={kelasInput} />
+          </label>
+          <label className={kelasLabel}>
+            Kategori
+            <input
+              name="kategori"
+              required
+              defaultValue={menu?.kategori ?? ""}
+              list="saran-kategori"
+              className={kelasInput}
+            />
+          </label>
+          <datalist id="saran-kategori">
+            {kategoriAda.map((k) => (
+              <option key={k} value={k} />
+            ))}
+          </datalist>
+          {menu ? null : (
+            <>
+              <p className="mt-4 border-t border-[var(--garis)] pt-3 text-sm font-bold text-[var(--hijau-tua)]">
+                Varian pertama
+              </p>
+              <label className={kelasLabel}>
+                Nama varian (mis. Panas / Es)
+                <input name="nama_varian" required className={kelasInput} />
+              </label>
+              <label className={kelasLabel}>
+                Harga jual (Rp)
+                <input name="harga" type="number" step="1" min="0" required className={kelasInput} />
+              </label>
+            </>
+          )}
+          {pesan ? (
+            <p className="mt-3 rounded-lg border border-[#EAC6BB] bg-[#F9E9E4] px-3 py-2 text-sm text-[var(--merah)]">
+              {pesan}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={sibuk}
+            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-60"
+          >
+            Simpan
+          </button>
+          {menu ? (
+            <button
+              type="button"
+              onClick={gantiAktif}
+              disabled={sibuk}
+              className="mt-2 w-full rounded-lg border border-[var(--garis-kuat)] px-4 py-2.5 text-sm font-semibold text-[var(--pudar)]"
+            >
+              {menu.aktif ? "Nonaktifkan menu" : "Aktifkan lagi"}
+            </button>
+          ) : null}
+        </form>
+      </Lembar>
+    </>
+  );
+}
