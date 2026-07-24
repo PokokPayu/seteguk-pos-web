@@ -104,6 +104,8 @@ input,select{font:inherit;color:inherit}
 .menu-tile .nama{font-weight:700;font-size:15.5px;line-height:1.25}
 .menu-tile .kat{font-size:11px;color:var(--pudar);letter-spacing:.06em;text-transform:uppercase}
 .menu-tile .harga{margin-top:auto;font-size:15px;color:var(--hijau-tua);font-weight:700}
+.tile-varian{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:2px;padding:3px 10px;border-radius:99px;border:1px solid var(--garis-kuat);font-size:11.5px;font-weight:700;color:var(--hijau-tua);background:#fff}
+.tile-varian:hover{border-color:var(--hijau)}
 .tab-kasir{display:inline-flex;border:1.5px solid var(--garis-kuat);border-radius:99px;background:var(--enamel);padding:3px;gap:2px}
 .tab-kasir button{padding:8px 18px;border-radius:99px;font-weight:700;font-size:13.5px;color:var(--pudar)}
 .tab-kasir button.aktif{background:var(--hijau);color:#F6F3E6}
@@ -653,6 +655,20 @@ function toast(msg){
   items:s.it.map(([vid,qty]) => ({vid, qty, harga:VARIAN[vid].harga, hpp:hppVarian(VARIAN[vid])}))
 }));
 
+/* urutan tile & varian default — dihitung sekali saat buka agar tile tidak
+   berpindah-pindah selama kasir bekerja */
+const terjualProduk = {}, terjualVid = {};
+SALES.forEach(s => s.items.forEach(i => {
+  terjualProduk[VARIAN[i.vid].produk] = (terjualProduk[VARIAN[i.vid].produk] || 0) + i.qty;
+  terjualVid[i.vid] = (terjualVid[i.vid] || 0) + i.qty;
+}));
+const PRODUK_URUT = [...PRODUK].sort((a,b) => (terjualProduk[b.nama]||0) - (terjualProduk[a.nama]||0));
+/* default = varian paling laku hari ini; berubah mengikuti pilihan terakhir kasir */
+const varianDefault = {};
+PRODUK.forEach((p,i) => {
+  varianDefault[i] = [...p.varian].sort((a,b) => (terjualVid[b.vid]||0) - (terjualVid[a.vid]||0))[0].vid;
+});
+
 /* ================= NAVIGASI ================= */
 const LAYAR = [
   {id:"kasir",  nama:"Kasir",  ikon:'<rect x="2" y="6" width="16" height="11" rx="2"/><path d="M2 10h16M6 14h3"/>'},
@@ -697,21 +713,29 @@ $("kat-baris").addEventListener("click", e => {
   katAktif = b.dataset.kat; renderKat(); renderMenuGrid();
 });
 function renderMenuGrid(){
-  const daftar = PRODUK.filter(p => katAktif==="Semua" || p.kat===katAktif);
-  $("menu-grid").innerHTML = daftar.map((p,i) => {
-    const hs = p.varian.map(v=>v.harga);
-    const harga = hs.length>1 ? `${rp(Math.min(...hs))} – ${rp(Math.max(...hs))}` : rp(hs[0]);
-    return `<button class="menu-tile" data-produk="${PRODUK.indexOf(p)}">
-      <span class="kat">${p.kat}${p.varian.length>1?` · ${p.varian.length} varian`:""}</span>
+  const daftar = PRODUK_URUT.filter(p => katAktif==="Semua" || p.kat===katAktif);
+  $("menu-grid").innerHTML = daftar.map(p => {
+    const idx = PRODUK.indexOf(p);
+    const v = VARIAN[varianDefault[idx]];
+    const laku = terjualProduk[p.nama];
+    return `<button class="menu-tile" data-produk="${idx}">
+      <span class="kat">${p.kat}${laku ? ` · ${laku}× hari ini` : ""}</span>
       <span class="nama">${p.nama}</span>
-      <span class="harga uang">${harga}</span></button>`;
+      ${p.varian.length > 1 ? `<span class="tile-varian" role="button" tabindex="0" data-varpick="${idx}" aria-label="Pilih varian ${p.nama}">${v.v} ▾</span>` : ""}
+      <span class="harga uang">${rp(v.harga)}</span></button>`;
   }).join("");
 }
 $("menu-grid").addEventListener("click", e => {
+  const vp = e.target.closest("[data-varpick]");
+  if (vp) { bukaVarian(PRODUK[+vp.dataset.varpick]); return; }
   const t = e.target.closest("[data-produk]"); if(!t) return;
-  const p = PRODUK[+t.dataset.produk];
-  if (p.varian.length === 1) tambahKeCart(p.varian[0].vid);
-  else bukaVarian(p);
+  tambahKeCart(varianDefault[+t.dataset.produk]);
+});
+$("menu-grid").addEventListener("keydown", e => {
+  const vp = e.target.closest("[data-varpick]");
+  if (vp && (e.key === "Enter" || e.key === " ")) {
+    e.preventDefault(); bukaVarian(PRODUK[+vp.dataset.varpick]);
+  }
 });
 function bukaVarian(p){
   $("sv-judul").textContent = p.nama;
@@ -721,7 +745,12 @@ function bukaVarian(p){
 }
 $("sv-daftar").addEventListener("click", e => {
   const b = e.target.closest("[data-vid]"); if(!b) return;
-  tutupSheet(); tambahKeCart(b.dataset.vid);
+  tutupSheet();
+  const vid = b.dataset.vid;
+  const idx = PRODUK.findIndex(p => p.varian.some(v => v.vid === vid));
+  varianDefault[idx] = vid;   /* tap berikutnya langsung varian ini */
+  tambahKeCart(vid);
+  renderMenuGrid();
 });
 function tambahKeCart(vid){
   const ada = cart.find(c => c.vid === vid);
