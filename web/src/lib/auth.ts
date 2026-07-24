@@ -14,7 +14,7 @@ export const getPengguna = cache(async (): Promise<Pengguna | null> => {
   if (!user) return null;
 
   const [profilRes, izinRes] = await Promise.all([
-    supabase.from("profiles").select("nama").eq("id", user.id).single(),
+    supabase.from("profiles").select("nama, aktif").eq("id", user.id).single(),
     supabase.from("user_permissions").select("permission").eq("user_id", user.id),
   ]);
   if (profilRes.error) {
@@ -23,6 +23,9 @@ export const getPengguna = cache(async (): Promise<Pengguna | null> => {
   if (izinRes.error) {
     console.error("getPengguna: gagal baca izin", izinRes.error);
   }
+
+  // profiles.aktif = false berarti akses dicabut
+  if (profilRes.data && profilRes.data.aktif === false) return null;
 
   return {
     id: user.id,
