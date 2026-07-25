@@ -8,14 +8,22 @@ export type Pengguna = { id: string; nama: string; izin: string[] };
 // cache(): satu request satu kali query, walau dipanggil layout + page.
 export const getPengguna = cache(async (): Promise<Pengguna | null> => {
   const supabase = await buatClientServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // getClaims(): verifikasi JWT lokal, tanpa round-trip ke server Auth —
+  // lihat catatan di proxy.ts.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) return null;
 
   const [profilRes, izinRes] = await Promise.all([
-    supabase.from("profiles").select("nama, aktif").eq("id", user.id).single(),
-    supabase.from("user_permissions").select("permission").eq("user_id", user.id),
+    supabase
+      .from("profiles")
+      .select("nama, aktif")
+      .eq("id", claims.sub)
+      .single(),
+    supabase
+      .from("user_permissions")
+      .select("permission")
+      .eq("user_id", claims.sub),
   ]);
   if (profilRes.error) {
     console.error("getPengguna: gagal baca profil", profilRes.error);
@@ -28,8 +36,8 @@ export const getPengguna = cache(async (): Promise<Pengguna | null> => {
   if (profilRes.data && profilRes.data.aktif === false) return null;
 
   return {
-    id: user.id,
-    nama: profilRes.data?.nama ?? user.email ?? "Pengguna",
+    id: claims.sub,
+    nama: profilRes.data?.nama ?? claims.email ?? "Pengguna",
     izin: (izinRes.data ?? []).map((b) => b.permission),
   };
 });
