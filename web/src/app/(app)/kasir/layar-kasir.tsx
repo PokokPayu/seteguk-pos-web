@@ -180,7 +180,7 @@ export function LayarKasir({
           <Riwayat transaksi={riwayat} bolehVoid={bolehVoid} />
         ) : (
           <>
-            <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+            <div className="grid gap-4 desktop:grid-cols-[1fr_340px]">
               <GridMenu
                 produk={produkTerurut}
                 varianDefault={varianDefault}
@@ -189,7 +189,7 @@ export function LayarKasir({
                   setVarianDefault((d) => ({ ...d, [produkId]: variantId }))
                 }
               />
-              <div className="hidden lg:block">
+              <div className="hidden desktop:block">
                 <Keranjang
                   isi={keranjang}
                   onUbahQty={ubahQty}
@@ -204,7 +204,7 @@ export function LayarKasir({
                 type="button"
                 data-cart-bar
                 onClick={() => setKeranjangBuka(true)}
-                className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 rounded-xl bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] shadow-[0_6px_18px_rgba(15,61,46,.35)] lg:hidden"
+                className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 rounded-xl bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] shadow-[0_6px_18px_rgba(15,61,46,.35)] desktop:hidden"
               >
                 <span>{jumlahItem} item — lihat pesanan</span>
                 <span className="uang">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -63,25 +64,15 @@ export function Navigasi({ items, nama }: { items: Item[]; nama: string }) {
   return (
     <>
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex w-[216px] shrink-0 flex-col sticky top-0 h-screen bg-[var(--hijau)] text-[#F2EEDF]">
+      <aside className="hidden desktop:flex w-[216px] shrink-0 flex-col sticky top-0 h-screen bg-[var(--hijau)] text-[#F2EEDF]">
         <div className="border-b border-white/15 px-4 py-5 [background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.06)_0_5px,transparent_5px_11px)]">
-          <svg
-            width="26"
-            height="30"
-            viewBox="0 0 26 30"
-            fill="none"
-            stroke="#F2EEDF"
-            strokeWidth="1.6"
-            aria-hidden="true"
-            className="mb-1"
-          >
-            <path d="M3 2h20l-2.5 26h-15L3 2z" />
-            <path
-              d="M8 5v20M13 5v21M18 5v20"
-              strokeOpacity="0.55"
-              strokeWidth="1.1"
-            />
-          </svg>
+          <Image
+            src="/logo-seteguk.png"
+            alt="Logo Seteguk"
+            width={44}
+            height={44}
+            className="mb-2 rounded-lg"
+          />
           <p className="text-[11px] uppercase tracking-[0.28em] text-[#BFD4C4]">
             Warung Kopi
           </p>
@@ -114,7 +105,7 @@ export function Navigasi({ items, nama }: { items: Item[]; nama: string }) {
       </aside>
 
       {/* Bottom nav mobile */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[60px] border-t-2 border-[var(--garis-kuat)] bg-[var(--enamel)] pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[60px] border-t-2 border-[var(--garis-kuat)] bg-[var(--enamel)] pb-[env(safe-area-inset-bottom)] desktop:hidden">
         {items.map((item) => {
           const aktif = pathname.startsWith(item.href);
           return (

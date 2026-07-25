@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Ambang "desktop" di atas iPad terbesar (Pro 12.9" landscape = 1366px).
+   Semua iPad memakai mode mobile; sidebar + Kasir 2 kolom baru muncul ≥1367px. */
+@theme {
+  --breakpoint-desktop: 1367px;
+}
+
 :root {
   --hijau-tua: #0f3d2e;
   --hijau: #17493b;

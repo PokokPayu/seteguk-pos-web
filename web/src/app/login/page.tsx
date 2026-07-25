@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { masuk } from "./actions";
 
 export default async function HalamanLogin({
@@ -12,6 +13,14 @@ export default async function HalamanLogin({
         action={masuk}
         className="w-full max-w-sm rounded-xl border border-[#E3DCC7] bg-[#FFFDF6] p-6"
       >
+        <Image
+          src="/logo-seteguk.png"
+          alt="Logo Seteguk"
+          width={72}
+          height={72}
+          priority
+          className="mb-4 rounded-xl"
+        />
         <p className="text-xs tracking-[0.28em] uppercase text-[#7A7260]">
           Warung Kopi
         </p>

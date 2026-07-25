@@ -38,7 +38,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4 md:bottom-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4 desktop:bottom-6"
       >
         <span
           className={`max-w-[88vw] rounded-lg bg-[var(--tinta)] px-4 py-2.5 text-center text-sm text-[var(--kertas)] shadow-lg transition-all duration-200 ${
