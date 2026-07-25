@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getPengguna } from "@/lib/auth";
+import { keluar } from "@/lib/keluar-aksi";
 import { filterNav } from "@/lib/nav";
 import { Navigasi } from "@/components/navigasi";
 import { ToastProvider } from "@/components/toast";
@@ -34,10 +35,20 @@ export default async function AppLayout({
                 <p className="display text-xl leading-none">SETEGUK</p>
               </div>
             </div>
-            <p className="text-right text-xs text-[#CBDCCF]">
-              <b className="block text-[13px] text-white">{pengguna.nama}</b>
-              Seteguk POS
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-right text-xs text-[#CBDCCF]">
+                <b className="block text-[13px] text-white">{pengguna.nama}</b>
+                Seteguk POS
+              </p>
+              <form action={keluar}>
+                <button
+                  type="submit"
+                  className="rounded-lg border border-white/25 px-3 py-1.5 text-xs font-semibold text-[#D8E2D3] hover:bg-white/10"
+                >
+                  Keluar
+                </button>
+              </form>
+            </div>
           </header>
           <main className="min-w-0 flex-1 p-4 pb-24 desktop:p-7 desktop:pb-7">
             {children}

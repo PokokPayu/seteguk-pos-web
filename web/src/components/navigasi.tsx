@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { keluar } from "@/lib/keluar-aksi";
 
 type Item = { href: string; label: string };
 
@@ -100,7 +101,17 @@ export function Navigasi({ items, nama }: { items: Item[]; nama: string }) {
           })}
         </nav>
         <div className="border-t border-white/15 px-4 py-3 text-xs text-[#BFD4C4]">
-          Masuk sebagai <b className="text-[#F2EEDF]">{nama}</b>
+          <p>
+            Masuk sebagai <b className="text-[#F2EEDF]">{nama}</b>
+          </p>
+          <form action={keluar} className="mt-2">
+            <button
+              type="submit"
+              className="w-full rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-[#D8E2D3] hover:bg-white/10"
+            >
+              Keluar
+            </button>
+          </form>
         </div>
       </aside>
 
