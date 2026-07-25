@@ -27,17 +27,20 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims(): verifikasi JWT lokal (WebCrypto) bila project memakai signing
+  // key asimetris; bila masih HS256 otomatis fallback verifikasi ke server.
+  // Token yang di-revoke tetap lolos di sini sampai kedaluwarsa — gerbang
+  // per-request-nya cek profiles.aktif di getPengguna().
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
   const diLogin = request.nextUrl.pathname.startsWith("/login");
-  if (!user && !diLogin) {
+  if (!claims && !diLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
-  if (user && diLogin) {
+  if (claims && diLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
