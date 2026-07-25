@@ -58,63 +58,94 @@ export function GrafikLaba({ baris }: { baris: BarisHarian[] }) {
       ) : (
         <>
           <div
-            className="mt-3 flex items-end gap-1.5"
+            className="relative mt-3"
             style={{ height: `${TINGGI_POS + TINGGI_NEG}px` }}
           >
-            {data.map((d) => {
-              const positif = d.laba >= 0;
-              const tinggi = Math.round(
-                (Math.abs(d.laba) / maxAbs) *
-                  (positif ? TINGGI_POS - 8 : TINGGI_NEG - 4)
-              );
-              return (
-                <div
-                  key={d.tanggal}
-                  className="group relative flex flex-1 flex-col"
-                  style={{ height: `${TINGGI_POS + TINGGI_NEG}px` }}
-                >
-                  {/* setengah atas: batang positif menempel garis nol */}
+            {/* garis grid tengah area positif */}
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-0 h-px bg-[var(--garis)]"
+              style={{ top: `${TINGGI_POS / 2}px` }}
+            />
+            <div className="flex h-full items-end gap-1.5">
+              {data.map((d, i) => {
+                const positif = d.laba >= 0;
+                const kini = i === data.length - 1;
+                const tinggi = Math.round(
+                  (Math.abs(d.laba) / maxAbs) *
+                    (positif ? TINGGI_POS - 8 : TINGGI_NEG - 4)
+                );
+                return (
                   <div
-                    className="flex items-end justify-center"
-                    style={{ height: `${TINGGI_POS}px` }}
+                    key={d.tanggal}
+                    className="group relative flex flex-1 flex-col"
+                    style={{ height: `${TINGGI_POS + TINGGI_NEG}px` }}
                   >
-                    {positif ? (
+                    {/* setengah atas: batang positif menempel garis nol */}
+                    <div
+                      className="flex items-end justify-center"
+                      style={{ height: `${TINGGI_POS}px` }}
+                    >
+                      {positif ? (
+                        <span
+                          className={`w-full rounded-t ${
+                            kini ? "bg-[var(--hijau)]" : "bg-[var(--hijau-daun)]"
+                          }`}
+                          style={{ height: `${tinggi}px` }}
+                        />
+                      ) : null}
+                    </div>
+                    {/* garis nol */}
+                    <span className="block h-px w-full bg-[var(--garis-kuat)]" />
+                    {/* setengah bawah: batang negatif */}
+                    <div
+                      className="flex items-start justify-center"
+                      style={{ height: `${TINGGI_NEG}px` }}
+                    >
+                      {!positif ? (
+                        <span
+                          className="w-full rounded-b bg-[var(--merah)]"
+                          style={{ height: `${tinggi}px` }}
+                        />
+                      ) : null}
+                    </div>
+                    {/* target hover/fokus + label aksesibilitas */}
+                    <button
+                      type="button"
+                      aria-label={`${labelHari(d.tanggal)} ${d.tanggal}: laba ${formatRupiah(d.laba)}`}
+                      className="absolute inset-0 cursor-default"
+                    />
+                    {kini ? (
                       <span
-                        className="w-full rounded-t bg-[var(--hijau-daun)]"
-                        style={{ height: `${tinggi}px` }}
-                      />
-                    ) : null}
+                        className="uang pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-[var(--hijau-tua)]"
+                        style={
+                          positif
+                            ? { bottom: `${TINGGI_NEG + tinggi + 4}px` }
+                            : { top: `${TINGGI_POS + tinggi + 4}px` }
+                        }
+                      >
+                        {formatRupiah(d.laba)}
+                      </span>
+                    ) : (
+                      <span className="pointer-events-none absolute -top-1 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-[var(--tinta)] px-1.5 py-0.5 text-[11px] text-[#F6F3E6] group-hover:block group-focus-within:block">
+                        {formatRupiah(d.laba)}
+                      </span>
+                    )}
                   </div>
-                  {/* garis nol */}
-                  <span className="block h-px w-full bg-[var(--garis-kuat)]" />
-                  {/* setengah bawah: batang negatif */}
-                  <div
-                    className="flex items-start justify-center"
-                    style={{ height: `${TINGGI_NEG}px` }}
-                  >
-                    {!positif ? (
-                      <span
-                        className="w-full rounded-b bg-[var(--merah)]"
-                        style={{ height: `${tinggi}px` }}
-                      />
-                    ) : null}
-                  </div>
-                  {/* target hover/fokus + label aksesibilitas */}
-                  <button
-                    type="button"
-                    aria-label={`${labelHari(d.tanggal)} ${d.tanggal}: laba ${formatRupiah(d.laba)}`}
-                    className="absolute inset-0 cursor-default"
-                  />
-                  <span className="pointer-events-none absolute -top-1 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-[var(--tinta)] px-1.5 py-0.5 text-[11px] text-[#F6F3E6] group-hover:block group-focus-within:block">
-                    {formatRupiah(d.laba)}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
           <div className="mt-1 flex gap-1.5 text-center text-[11px] text-[var(--pudar)]">
-            {data.map((d) => (
-              <span key={d.tanggal} className="flex-1">
+            {data.map((d, i) => (
+              <span
+                key={d.tanggal}
+                className={`flex-1 ${
+                  i === data.length - 1
+                    ? "font-bold text-[var(--hijau-tua)]"
+                    : ""
+                }`}
+              >
                 {labelHari(d.tanggal)}
               </span>
             ))}

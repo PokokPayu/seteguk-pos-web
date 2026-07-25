@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import { setAktifVarian, simpanVarian } from "./actions";
 import type { Varian } from "./jenis";
 
@@ -16,6 +17,7 @@ export function FormVarian({
   productId: string;
   varian?: Varian;
 }) {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [pesan, setPesan] = useState("");
   const [sibuk, setSibuk] = useState(false);
@@ -28,6 +30,7 @@ export function FormVarian({
     if (hasil.ok) {
       setBuka(false);
       setPesan("");
+      toast(varian ? "Varian diperbarui" : "Varian ditambahkan");
     } else {
       setPesan(hasil.pesan);
     }
@@ -38,8 +41,12 @@ export function FormVarian({
     setSibuk(true);
     const hasil = await setAktifVarian(varian.id, !varian.aktif);
     setSibuk(false);
-    if (hasil.ok) setBuka(false);
-    else setPesan(hasil.pesan);
+    if (hasil.ok) {
+      setBuka(false);
+      toast(varian.aktif ? "Varian dinonaktifkan" : "Varian diaktifkan");
+    } else {
+      setPesan(hasil.pesan);
+    }
   }
 
   return (
@@ -87,7 +94,7 @@ export function FormVarian({
           <button
             type="submit"
             disabled={sibuk}
-            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-60"
+            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
           >
             Simpan
           </button>

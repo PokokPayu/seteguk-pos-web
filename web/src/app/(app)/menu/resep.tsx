@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "@/components/toast";
 import { formatJumlah, formatRupiahDesimal } from "@/lib/format";
 import { hapusBarisResep, simpanBarisResep } from "./actions";
 import type { BahanResep, BarisResep } from "./jenis";
@@ -21,6 +22,7 @@ export function Resep({
   baris: BarisResepTampil[];
   bahan: BahanResep[];
 }) {
+  const toast = useToast();
   const [pesan, setPesan] = useState("");
   const [sibuk, setSibuk] = useState(false);
 
@@ -33,6 +35,7 @@ export function Resep({
     if (hasil.ok) {
       form.reset();
       setPesan("");
+      toast("Resep diperbarui");
     } else {
       setPesan(hasil.pesan);
     }
@@ -42,7 +45,8 @@ export function Resep({
     setSibuk(true);
     const hasil = await hapusBarisResep(id);
     setSibuk(false);
-    if (!hasil.ok) setPesan(hasil.pesan);
+    if (hasil.ok) toast("Bahan dihapus dari resep");
+    else setPesan(hasil.pesan);
   }
 
   return (
@@ -110,7 +114,7 @@ export function Resep({
           <button
             type="submit"
             disabled={sibuk}
-            className="rounded-lg bg-[var(--hijau)] px-3 py-2 text-sm font-bold text-[#F6F3E6] disabled:opacity-60"
+            className="rounded-lg bg-[var(--hijau)] px-3 py-2 text-sm font-bold text-[#F6F3E6] disabled:opacity-50"
           >
             Simpan
           </button>

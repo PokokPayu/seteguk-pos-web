@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import { formatJumlah } from "@/lib/format";
 import { catatOpname } from "./actions";
 import type { Bahan } from "./jenis";
@@ -11,6 +12,7 @@ const kelasInput =
 const kelasLabel = "mt-3 block text-sm font-semibold text-[var(--pudar)]";
 
 export function FormOpname({ bahan }: { bahan: Bahan[] }) {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [pesan, setPesan] = useState("");
   const [sibuk, setSibuk] = useState(false);
@@ -34,6 +36,7 @@ export function FormOpname({ bahan }: { bahan: Bahan[] }) {
       setIdBahan("");
       setFisik("");
       setPesan("");
+      toast("Opname tersimpan — stok dikoreksi");
     } else {
       setPesan(hasil.pesan);
     }
@@ -100,7 +103,7 @@ export function FormOpname({ bahan }: { bahan: Bahan[] }) {
           <button
             type="submit"
             disabled={sibuk}
-            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-60"
+            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
           >
             Simpan opname
           </button>

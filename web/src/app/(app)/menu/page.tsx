@@ -118,10 +118,19 @@ export default async function HalamanMenu() {
                         <span className="flex items-center gap-3">
                           <span className="uang text-[var(--pudar)]">
                             HPP {hpp === null ? "—" : formatRupiahDesimal(hpp)}
-                            {hpp === null
-                              ? ""
-                              : ` · Margin ${formatRupiahDesimal(v.harga - hpp)}`}
                           </span>
+                          {hpp !== null && v.harga > 0 ? (
+                            <span
+                              title="Margin"
+                              className={`uang font-bold ${
+                                (v.harga - hpp) / v.harga < 0.5
+                                  ? "text-[var(--merah)]"
+                                  : "text-[var(--hijau-tua)]"
+                              }`}
+                            >
+                              {Math.round(((v.harga - hpp) / v.harga) * 100)}%
+                            </span>
+                          ) : null}
                           <b className="uang">{formatRupiah(v.harga)}</b>
                           <FormVarian productId={p.id} varian={v} />
                         </span>

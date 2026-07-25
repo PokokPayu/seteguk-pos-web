@@ -9,6 +9,8 @@ import { Keranjang } from "./keranjang";
 import { SheetBayar } from "./sheet-bayar";
 import { SheetTutupKasir } from "./sheet-tutup-kasir";
 import { Riwayat } from "./riwayat";
+import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import type { BarisKeranjang, ProdukKasir, TransaksiRiwayat } from "./jenis";
 
 function varianTerlaris(produk: ProdukKasir[]): Record<string, string> {
@@ -33,12 +35,14 @@ export function LayarKasir({
   tunaiSistem: number;
   sudahDitutup: { tunai_fisik: number; selisih: number } | null;
 }) {
+  const toast = useToast();
   const [tab, setTab] = useState<"jual" | "riwayat">("jual");
   const [keranjang, setKeranjang] = useState<BarisKeranjang[]>([]);
   const [varianDefault, setVarianDefault] = useState<Record<string, string>>(
     () => varianTerlaris(produk)
   );
   const [bukaBayar, setBukaBayar] = useState(false);
+  const [keranjangBuka, setKeranjangBuka] = useState(false);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState("");
   const [sukses, setSukses] = useState("");
@@ -80,6 +84,7 @@ export function LayarKasir({
         },
       ];
     });
+    toast(`${p.nama} masuk pesanan`);
   }
 
   function ubahQty(variantId: string, delta: number) {
@@ -113,59 +118,120 @@ export function LayarKasir({
     setKeranjang([]);
     setPesan("");
     setBukaBayar(false);
+    setKeranjangBuka(false);
+  }
+
+  const selesaiCount = riwayat.filter((r) => r.status === "selesai").length;
+  const jumlahItem = keranjang.reduce((s, b) => s + b.qty, 0);
+
+  function mulaiBayar() {
+    setPesan("");
+    setBukaBayar(true);
   }
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--garis)]">
-        <div className="flex gap-2">
-          {(["jual", "riwayat"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-bold ${
-                tab === t
-                  ? "border-[var(--hijau)] text-[var(--hijau-tua)]"
-                  : "border-transparent text-[var(--pudar)]"
-              }`}
-            >
-              {t === "jual"
-                ? "Jual"
-                : `Riwayat (${riwayat.filter((r) => r.status === "selesai").length})`}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          role="tablist"
+          aria-label="Mode kasir"
+          className="inline-flex gap-0.5 rounded-full border-[1.5px] border-[var(--garis-kuat)] bg-[var(--enamel)] p-[3px]"
+        >
+          {(["jual", "riwayat"] as const).map((t) => {
+            const aktif = tab === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={aktif}
+                onClick={() => setTab(t)}
+                className={`rounded-full px-4 py-2 text-sm font-bold ${
+                  aktif
+                    ? "bg-[var(--hijau)] text-[#F6F3E6]"
+                    : "text-[var(--pudar)]"
+                }`}
+              >
+                {t === "jual" ? (
+                  "Jual"
+                ) : (
+                  <>
+                    Riwayat{" "}
+                    <span
+                      className={`ml-0.5 inline-block min-w-5 rounded-full px-1.5 text-center text-[11px] ${
+                        aktif
+                          ? "bg-white/20"
+                          : "bg-[#EDE7D6] text-[var(--tinta)]"
+                      }`}
+                    >
+                      {selesaiCount}
+                    </span>
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
-        <div className="pb-1.5">
-          <SheetTutupKasir
-            tunaiSistem={tunaiSistem}
-            sudahDitutup={sudahDitutup}
-          />
-        </div>
+        <SheetTutupKasir tunaiSistem={tunaiSistem} sudahDitutup={sudahDitutup} />
       </div>
 
       <div className="mt-4">
         {tab === "riwayat" ? (
           <Riwayat transaksi={riwayat} bolehVoid={bolehVoid} />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-            <GridMenu
-              produk={produkTerurut}
-              varianDefault={varianDefault}
-              onTambah={tambah}
-              onPilihVarian={(produkId, variantId) =>
-                setVarianDefault((d) => ({ ...d, [produkId]: variantId }))
-              }
-            />
-            <Keranjang
-              isi={keranjang}
-              onUbahQty={ubahQty}
-              onBayar={() => {
-                setPesan("");
-                setBukaBayar(true);
-              }}
-            />
-          </div>
+          <>
+            <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+              <GridMenu
+                produk={produkTerurut}
+                varianDefault={varianDefault}
+                onTambah={tambah}
+                onPilihVarian={(produkId, variantId) =>
+                  setVarianDefault((d) => ({ ...d, [produkId]: variantId }))
+                }
+              />
+              <div className="hidden lg:block">
+                <Keranjang
+                  isi={keranjang}
+                  onUbahQty={ubahQty}
+                  onBayar={mulaiBayar}
+                />
+              </div>
+            </div>
+
+            {/* Bilah keranjang mengambang — mobile */}
+            {jumlahItem > 0 ? (
+              <button
+                type="button"
+                data-cart-bar
+                onClick={() => setKeranjangBuka(true)}
+                className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 rounded-xl bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] shadow-[0_6px_18px_rgba(15,61,46,.35)] lg:hidden"
+              >
+                <span>{jumlahItem} item — lihat pesanan</span>
+                <span className="uang">
+                  {formatRupiah(totalKeranjang(keranjang))}
+                </span>
+              </button>
+            ) : null}
+
+            {/* Lembar keranjang — mobile */}
+            {keranjangBuka ? (
+              <Lembar
+                buka
+                judul={`Pesanan · ${jumlahItem} item`}
+                onTutup={() => setKeranjangBuka(false)}
+              >
+                <Keranjang
+                  tampilan="lembar"
+                  isi={keranjang}
+                  onUbahQty={ubahQty}
+                  onBayar={() => {
+                    setKeranjangBuka(false);
+                    mulaiBayar();
+                  }}
+                />
+              </Lembar>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -187,16 +253,22 @@ export function LayarKasir({
         <button
           type="button"
           onClick={() => setSukses("")}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--hijau-tua)]/95 p-6 text-center text-[#F6F3E6]"
+          className="fixed inset-0 z-[90] grid place-items-center bg-[var(--hijau)] p-6 text-center text-[#F2EEDF] [background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.05)_0_6px,transparent_6px_13px)]"
         >
-          <span className="display text-3xl">Transaksi tersimpan</span>
-          <span className="uang mt-2 text-xl">{sukses}</span>
-          {stokMinus.length > 0 ? (
-            <span className="mt-4 max-w-sm rounded-lg bg-[var(--kunyit)] px-3 py-2 text-sm font-semibold text-[#241F15]">
-              Stok minus: {stokMinus.join(", ")} — segera lakukan opname.
+          <span className="block">
+            <span className="animate-stempel display inline-block rounded-[10px] border-4 border-[#F6F3E6] px-8 py-1.5 text-5xl text-[#F6F3E6]">
+              Lunas
             </span>
-          ) : null}
-          <span className="mt-6 text-sm opacity-80">Ketuk untuk lanjut</span>
+            <span className="mt-6 block text-sm text-[#CBDCCF]">{sukses}</span>
+            {stokMinus.length > 0 ? (
+              <span className="mx-auto mt-4 block max-w-sm rounded-lg bg-[var(--kunyit)] px-3 py-2 text-sm font-semibold text-[#241F15]">
+                Stok minus: {stokMinus.join(", ")} — segera lakukan opname.
+              </span>
+            ) : null}
+            <span className="mt-8 block text-xs uppercase tracking-[0.14em] text-[#A9C4AF]">
+              Ketuk di mana saja untuk lanjut
+            </span>
+          </span>
         </button>
       ) : null}
     </div>

@@ -4,6 +4,7 @@
   --hijau-tua: #0f3d2e;
   --hijau: #17493b;
   --hijau-daun: #2f9068;
+  --hijau-bg: #e4f1e8;
   --kertas: #f5f1e6;
   --enamel: #fffdf6;
   --tinta: #241f15;
@@ -11,12 +12,37 @@
   --garis: #e3dcc7;
   --garis-kuat: #cfc5a8;
   --kunyit: #dfa320;
+  --kunyit-bg: #fbf3dc;
   --merah: #c2452d;
+  --merah-bg: #f9e9e4;
 }
 
 body {
   background: var(--kertas);
   color: var(--tinta);
+}
+
+/* Preflight Tailwind v4 menyetel button ke cursor:default. Kembalikan ke
+   pointer seperti prototype (button{cursor:pointer}), dan not-allowed saat
+   nonaktif. */
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Fokus keyboard: cincin kunyit konsisten di seluruh app. Field input memakai
+   perubahan border hijau tanpa outline ganda, mengikuti prototype. */
+:focus-visible {
+  outline: 3px solid var(--kunyit);
+  outline-offset: 2px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--hijau);
+  outline: none;
 }
 
 .uang {
@@ -30,4 +56,63 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+/* Stempel "LUNAS" jatuh saat transaksi tersimpan. */
+@keyframes stempel-jatuh {
+  0% {
+    transform: rotate(-4deg) scale(2.1);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(-4deg) scale(0.96);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-4deg) scale(1);
+  }
+}
+.animate-stempel {
+  animation: stempel-jatuh 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Denyut angka keranjang saat item baru masuk. */
+@keyframes denyut {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-denyut {
+  animation: denyut 0.32s ease-out;
+}
+
+/* Kerlip skeleton saat memuat data. */
+@keyframes kerlip {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.animate-kerlip {
+  animation: kerlip 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

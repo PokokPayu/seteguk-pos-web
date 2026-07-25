@@ -51,27 +51,52 @@ export default async function HalamanStok() {
           </thead>
           <tbody>
             {urut.map((b) => {
+              const habis = b.stok <= 0;
               const menipis = b.stok <= b.min_stok;
+              const rasio = Math.max(
+                0,
+                Math.min(1, b.stok / (b.min_stok * 3 || 1))
+              );
+              const warnaMeter = habis
+                ? "var(--merah)"
+                : menipis
+                  ? "var(--kunyit)"
+                  : "var(--hijau-daun)";
               return (
                 <tr key={b.id} className="border-b border-[var(--garis)] last:border-0">
-                  <td className="px-3 py-2 font-semibold">
+                  <td className="px-3 py-2 align-top font-semibold">
                     {b.nama}
-                    {menipis ? (
-                      <span className="ml-2 rounded bg-[#F9E9E4] px-1.5 py-0.5 text-[11px] font-bold text-[var(--merah)]">
-                        {b.stok < 0 ? "minus — perlu opname" : "menipis"}
+                    {habis ? (
+                      <span className="ml-2 whitespace-nowrap rounded-full border border-[#EAC6BB] bg-[var(--merah-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--merah)]">
+                        {b.stok < 0 ? "Minus — perlu opname" : "Habis"}
+                      </span>
+                    ) : menipis ? (
+                      <span className="ml-2 whitespace-nowrap rounded-full border border-[#EBD9A6] bg-[var(--kunyit-bg)] px-2 py-0.5 text-[11px] font-bold text-[#8A6510]">
+                        Menipis
                       </span>
                     ) : null}
                   </td>
-                  <td className="uang px-3 py-2 text-right">
-                    {formatJumlah(b.stok)} {b.satuan}
+                  <td className="px-3 py-2 text-right align-top">
+                    <div className="uang">
+                      {formatJumlah(b.stok)} {b.satuan}
+                    </div>
+                    <div className="ml-auto mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-[#EDE7D6]">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${rasio * 100}%`,
+                          background: warnaMeter,
+                        }}
+                      />
+                    </div>
                   </td>
-                  <td className="uang px-3 py-2 text-right">
+                  <td className="uang px-3 py-2 text-right align-top">
                     {formatJumlah(b.min_stok)} {b.satuan}
                   </td>
-                  <td className="uang px-3 py-2 text-right">
+                  <td className="uang px-3 py-2 text-right align-top">
                     {formatRupiahDesimal(b.harga_rata)}/{b.satuan}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2 text-right align-top">
                     <FormBahan bahan={b} />
                   </td>
                 </tr>

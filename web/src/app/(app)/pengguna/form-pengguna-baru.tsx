@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
-import { LABEL_IZIN, SEMUA_IZIN } from "@/lib/permissions";
+import { useToast } from "@/components/toast";
+import { DESKRIPSI_IZIN, LABEL_IZIN, SEMUA_IZIN } from "@/lib/permissions";
 import { buatPengguna } from "./actions";
 
 const kelasInput =
@@ -10,6 +11,7 @@ const kelasInput =
 const kelasLabel = "mt-3 block text-sm font-semibold text-[var(--pudar)]";
 
 export function FormPenggunaBaru() {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState("");
@@ -19,8 +21,13 @@ export function FormPenggunaBaru() {
     setSibuk(true);
     const hasil = await buatPengguna(new FormData(e.currentTarget));
     setSibuk(false);
-    if (hasil.ok) setBuka(false);
-    else setPesan(hasil.pesan);
+    if (hasil.ok) {
+      setBuka(false);
+      setPesan("");
+      toast("Pengguna baru dibuat");
+    } else {
+      setPesan(hasil.pesan);
+    }
   }
 
   return (
@@ -67,10 +74,20 @@ export function FormPenggunaBaru() {
               {SEMUA_IZIN.map((i) => (
                 <label
                   key={i}
-                  className="flex items-start gap-2 rounded-lg border border-[var(--garis)] bg-white px-3 py-2 text-sm"
+                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--garis)] bg-white px-3 py-2 text-sm"
                 >
-                  <input type="checkbox" name="izin" value={i} className="mt-0.5" />
-                  <span>{LABEL_IZIN[i]}</span>
+                  <input
+                    type="checkbox"
+                    name="izin"
+                    value={i}
+                    className="mt-0.5 h-4 w-4 accent-[var(--hijau)]"
+                  />
+                  <span>
+                    {LABEL_IZIN[i]}
+                    <span className="block text-xs text-[var(--pudar)]">
+                      {DESKRIPSI_IZIN[i]}
+                    </span>
+                  </span>
                 </label>
               ))}
             </div>
@@ -82,7 +99,7 @@ export function FormPenggunaBaru() {
             <button
               type="submit"
               disabled={sibuk}
-              className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] disabled:opacity-50"
+              className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] disabled:opacity-50"
             >
               {sibuk ? "Membuat…" : "Buat akun"}
             </button>

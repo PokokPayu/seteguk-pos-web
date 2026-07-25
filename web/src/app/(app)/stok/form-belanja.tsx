@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import { formatRupiahDesimal } from "@/lib/format";
 import { hitungRataRata } from "@/lib/inventori";
 import { catatBelanja } from "./actions";
@@ -12,6 +13,7 @@ const kelasInput =
 const kelasLabel = "mt-3 block text-sm font-semibold text-[var(--pudar)]";
 
 export function FormBelanja({ bahan }: { bahan: Bahan[] }) {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [pesan, setPesan] = useState("");
   const [sibuk, setSibuk] = useState(false);
@@ -40,6 +42,7 @@ export function FormBelanja({ bahan }: { bahan: Bahan[] }) {
       setQty("");
       setTotal("");
       setPesan("");
+      toast("Belanja tersimpan — stok bertambah");
     } else {
       setPesan(hasil.pesan);
     }
@@ -115,7 +118,7 @@ export function FormBelanja({ bahan }: { bahan: Bahan[] }) {
           <button
             type="submit"
             disabled={sibuk}
-            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-60"
+            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
           >
             Simpan belanja
           </button>

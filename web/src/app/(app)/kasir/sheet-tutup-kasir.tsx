@@ -84,7 +84,7 @@ function FormTutupKasir({
         type="button"
         disabled={sibuk || !valid}
         onClick={simpan}
-        className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
+        className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
       >
         {sibuk ? "Menyimpan…" : "Simpan tutup kasir"}
       </button>

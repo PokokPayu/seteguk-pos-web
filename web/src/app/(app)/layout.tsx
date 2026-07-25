@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getPengguna } from "@/lib/auth";
 import { filterNav } from "@/lib/nav";
 import { Navigasi } from "@/components/navigasi";
+import { ToastProvider } from "@/components/toast";
 
 export default async function AppLayout({
   children,
@@ -11,9 +12,28 @@ export default async function AppLayout({
   const pengguna = await getPengguna();
   if (!pengguna) redirect("/keluar");
   return (
-    <div className="flex min-h-screen">
-      <Navigasi items={filterNav(pengguna.izin)} nama={pengguna.nama} />
-      <main className="min-w-0 flex-1 p-4 pb-24 md:p-7 md:pb-7">{children}</main>
-    </div>
+    <ToastProvider>
+      <div className="flex min-h-screen">
+        <Navigasi items={filterNav(pengguna.izin)} nama={pengguna.nama} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Topbar mobile */}
+          <header className="sticky top-0 z-40 flex items-center justify-between bg-[var(--hijau)] px-4 py-3 text-[#F2EEDF] [background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.06)_0_5px,transparent_5px_11px)] md:hidden">
+            <div>
+              <p className="text-[9px] uppercase tracking-[0.24em] text-[#BFD4C4]">
+                Warung Kopi
+              </p>
+              <p className="display text-xl leading-none">SETEGUK</p>
+            </div>
+            <p className="text-right text-xs text-[#CBDCCF]">
+              <b className="block text-[13px] text-white">{pengguna.nama}</b>
+              Seteguk POS
+            </p>
+          </header>
+          <main className="min-w-0 flex-1 p-4 pb-24 md:p-7 md:pb-7">
+            {children}
+          </main>
+        </div>
+      </div>
+    </ToastProvider>
   );
 }

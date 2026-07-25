@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
-import { LABEL_IZIN, SEMUA_IZIN } from "@/lib/permissions";
+import { useToast } from "@/components/toast";
+import { DESKRIPSI_IZIN, LABEL_IZIN, SEMUA_IZIN } from "@/lib/permissions";
 import { setAktifPengguna, simpanIzin } from "./actions";
 import type { PenggunaBaris } from "./jenis";
 
 export function KartuPengguna({ pengguna }: { pengguna: PenggunaBaris }) {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState("");
@@ -18,16 +20,24 @@ export function KartuPengguna({ pengguna }: { pengguna: PenggunaBaris }) {
     setSibuk(true);
     const hasil = await simpanIzin(pengguna.id, dipilih);
     setSibuk(false);
-    if (hasil.ok) setBuka(false);
-    else setPesan(hasil.pesan);
+    if (hasil.ok) {
+      setBuka(false);
+      toast(`Akses ${pengguna.nama} diperbarui`);
+    } else {
+      setPesan(hasil.pesan);
+    }
   }
 
   async function gantiAktif() {
     setSibuk(true);
     const hasil = await setAktifPengguna(pengguna.id, !pengguna.aktif);
     setSibuk(false);
-    if (hasil.ok) setBuka(false);
-    else setPesan(hasil.pesan);
+    if (hasil.ok) {
+      setBuka(false);
+      toast(pengguna.aktif ? "Pengguna dinonaktifkan" : "Pengguna diaktifkan");
+    } else {
+      setPesan(hasil.pesan);
+    }
   }
 
   return (
@@ -43,14 +53,18 @@ export function KartuPengguna({ pengguna }: { pengguna: PenggunaBaris }) {
       <p className="text-xs text-[var(--pudar)]">{pengguna.email}</p>
       <div className="mt-2 flex flex-wrap gap-1">
         {semua ? (
-          <span className="rounded bg-[var(--hijau)] px-1.5 py-0.5 text-[11px] font-bold text-[#F6F3E6]">
+          <span className="rounded-full border border-[#C4DFCE] bg-[#E4F1E8] px-2 py-0.5 text-[11px] font-bold text-[#1F5C42]">
             Semua akses
+          </span>
+        ) : pengguna.izin.length === 0 ? (
+          <span className="rounded-full border border-[var(--garis)] bg-[var(--kertas)] px-2 py-0.5 text-[11px] text-[var(--pudar)]">
+            Belum ada akses
           </span>
         ) : (
           pengguna.izin.map((i) => (
             <span
               key={i}
-              className="rounded bg-[var(--kertas)] px-1.5 py-0.5 text-[11px] text-[var(--pudar)]"
+              className="rounded-full border border-[var(--garis)] bg-[var(--kertas)] px-2 py-0.5 text-[11px] text-[var(--pudar)]"
             >
               {LABEL_IZIN[i as keyof typeof LABEL_IZIN] ?? i}
             </span>
@@ -72,16 +86,21 @@ export function KartuPengguna({ pengguna }: { pengguna: PenggunaBaris }) {
               {SEMUA_IZIN.map((i) => (
                 <label
                   key={i}
-                  className="flex items-start gap-2 rounded-lg border border-[var(--garis)] bg-white px-3 py-2 text-sm"
+                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--garis)] bg-white px-3 py-2 text-sm"
                 >
                   <input
                     type="checkbox"
                     name="izin"
                     value={i}
                     defaultChecked={pengguna.izin.includes(i)}
-                    className="mt-0.5"
+                    className="mt-0.5 h-4 w-4 accent-[var(--hijau)]"
                   />
-                  <span>{LABEL_IZIN[i]}</span>
+                  <span>
+                    {LABEL_IZIN[i]}
+                    <span className="block text-xs text-[var(--pudar)]">
+                      {DESKRIPSI_IZIN[i]}
+                    </span>
+                  </span>
                 </label>
               ))}
             </div>
@@ -93,7 +112,7 @@ export function KartuPengguna({ pengguna }: { pengguna: PenggunaBaris }) {
             <button
               type="submit"
               disabled={sibuk}
-              className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] disabled:opacity-50"
+              className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] disabled:opacity-50"
             >
               {sibuk ? "Menyimpan…" : "Simpan akses"}
             </button>

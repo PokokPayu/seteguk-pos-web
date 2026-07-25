@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import { setAktifBahan, simpanBahan } from "./actions";
 import type { Bahan } from "./jenis";
 
@@ -10,6 +11,7 @@ const kelasInput =
 const kelasLabel = "mt-3 block text-sm font-semibold text-[var(--pudar)]";
 
 export function FormBahan({ bahan }: { bahan?: Bahan }) {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [pesan, setPesan] = useState("");
   const [sibuk, setSibuk] = useState(false);
@@ -22,6 +24,7 @@ export function FormBahan({ bahan }: { bahan?: Bahan }) {
     if (hasil.ok) {
       setBuka(false);
       setPesan("");
+      toast(bahan ? "Bahan diperbarui" : "Bahan ditambahkan");
     } else {
       setPesan(hasil.pesan);
     }
@@ -32,8 +35,12 @@ export function FormBahan({ bahan }: { bahan?: Bahan }) {
     setSibuk(true);
     const hasil = await setAktifBahan(bahan.id, !bahan.aktif);
     setSibuk(false);
-    if (hasil.ok) setBuka(false);
-    else setPesan(hasil.pesan);
+    if (hasil.ok) {
+      setBuka(false);
+      toast(bahan.aktif ? "Bahan dinonaktifkan" : "Bahan diaktifkan");
+    } else {
+      setPesan(hasil.pesan);
+    }
   }
 
   return (
@@ -95,7 +102,7 @@ export function FormBahan({ bahan }: { bahan?: Bahan }) {
           <button
             type="submit"
             disabled={sibuk}
-            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-60"
+            className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
           >
             Simpan
           </button>

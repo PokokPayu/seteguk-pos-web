@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import { catatPengeluaran, tambahKategori } from "./actions";
 import type { Kategori } from "./jenis";
 
@@ -16,6 +17,7 @@ export function FormPengeluaran({
   kategori: Kategori[];
   hariIni: string;
 }) {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState("");
@@ -26,8 +28,13 @@ export function FormPengeluaran({
     setSibuk(true);
     const hasil = await catatPengeluaran(new FormData(e.currentTarget));
     setSibuk(false);
-    if (hasil.ok) setBuka(false);
-    else setPesan(hasil.pesan);
+    if (hasil.ok) {
+      setBuka(false);
+      setPesan("");
+      toast("Pengeluaran tercatat");
+    } else {
+      setPesan(hasil.pesan);
+    }
   }
 
   async function simpanKategori() {
@@ -37,6 +44,7 @@ export function FormPengeluaran({
     if (hasil.ok) {
       setKategoriBaru("");
       setPesan("");
+      toast("Kategori ditambahkan");
     } else {
       setPesan(hasil.pesan);
     }
@@ -100,7 +108,7 @@ export function FormPengeluaran({
             <button
               type="submit"
               disabled={sibuk}
-              className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] disabled:opacity-50"
+              className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] disabled:opacity-50"
             >
               {sibuk ? "Menyimpan…" : "Simpan"}
             </button>

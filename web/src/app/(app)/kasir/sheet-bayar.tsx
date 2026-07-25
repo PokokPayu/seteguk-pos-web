@@ -32,21 +32,23 @@ export function SheetBayar({
 
   return (
     <Lembar buka={buka} judul="Pembayaran" onTutup={onTutup}>
-      <div className="flex items-center justify-between border-b border-[var(--garis)] pb-3">
-        <span className="text-sm text-[var(--pudar)]">Total</span>
-        <b className="uang text-xl">{formatRupiah(total)}</b>
-      </div>
+      <p className="text-center text-xs uppercase tracking-[0.18em] text-[var(--pudar)]">
+        Total tagihan
+      </p>
+      <p className="display mt-0.5 text-center text-4xl [font-variant-numeric:tabular-nums]">
+        {formatRupiah(total)}
+      </p>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         {(["tunai", "qris"] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => setMetode(m)}
-            className={`rounded-lg border px-3 py-2.5 font-bold ${
+            className={`rounded-lg border-2 px-3 py-2.5 font-bold ${
               metode === m
-                ? "border-[var(--hijau)] bg-[var(--hijau)] text-[#F6F3E6]"
-                : "border-[var(--garis-kuat)] bg-white text-[var(--hijau-tua)]"
+                ? "border-[var(--hijau)] bg-[var(--hijau-bg)] text-[var(--hijau-tua)]"
+                : "border-[var(--garis-kuat)] bg-white text-[var(--tinta)]"
             }`}
           >
             {m === "tunai" ? "Tunai" : "QRIS"}
@@ -111,7 +113,7 @@ export function SheetBayar({
         type="button"
         disabled={sibuk || kurang}
         onClick={() => onBayar(metode, metode === "tunai" ? angka : null)}
-        className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
+        className="mt-4 w-full rounded-lg bg-[var(--hijau)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] hover:bg-[var(--hijau-tua)] disabled:opacity-50"
       >
         {sibuk ? "Menyimpan…" : "Selesai"}
       </button>

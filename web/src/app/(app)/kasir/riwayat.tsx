@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useOptimistic, useState, useTransition } from "react";
+import { Lembar } from "@/components/lembar";
+import { useToast } from "@/components/toast";
 import { formatRupiah } from "@/lib/format";
 import { voidPenjualan } from "./actions";
 import type { TransaksiRiwayat } from "./jenis";
@@ -24,22 +26,29 @@ export function Riwayat({
   transaksi: TransaksiRiwayat[];
   bolehVoid: boolean;
 }) {
-  const [sibuk, setSibuk] = useState("");
-  const [pesan, setPesan] = useState("");
+  const toast = useToast();
+  const [konfirm, setKonfirm] = useState<TransaksiRiwayat | null>(null);
+  const [, startTransition] = useTransition();
+  // Void ditampilkan optimistis: baris langsung tercoret sementara server
+  // memproses. Bila gagal, state kembali ke asal saat transisi selesai.
+  const [optimis, tandaiVoid] = useOptimistic(
+    transaksi,
+    (state, id: string) =>
+      state.map((t) => (t.id === id ? { ...t, status: "void" as const } : t))
+  );
 
-  const selesai = transaksi.filter((t) => t.status === "selesai");
+  const selesai = optimis.filter((t) => t.status === "selesai");
   const omzet = selesai.reduce((s, t) => s + totalTransaksi(t), 0);
 
-  async function batalkan(id: string) {
-    if (
-      !confirm("Batalkan transaksi ini? Stok bahan akan dikembalikan.")
-    ) {
-      return;
-    }
-    setSibuk(id);
-    const hasil = await voidPenjualan(id);
-    setSibuk("");
-    setPesan(hasil.ok ? "" : hasil.pesan);
+  function konfirmasiVoid() {
+    if (!konfirm) return;
+    const id = konfirm.id;
+    setKonfirm(null);
+    startTransition(async () => {
+      tandaiVoid(id);
+      const hasil = await voidPenjualan(id);
+      toast(hasil.ok ? "Transaksi dibatalkan — stok dikembalikan" : hasil.pesan);
+    });
   }
 
   return (
@@ -53,14 +62,8 @@ export function Riwayat({
         </span>
       </div>
 
-      {pesan ? (
-        <p className="mt-3 rounded-lg border border-[#EAC6BB] bg-[#F9E9E4] px-3 py-2 text-sm text-[var(--merah)]">
-          {pesan}
-        </p>
-      ) : null}
-
       <ul className="mt-3 space-y-2">
-        {transaksi.map((t) => (
+        {optimis.map((t) => (
           <li
             key={t.id}
             className={`flex flex-wrap items-center gap-2 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-3 text-sm ${
@@ -70,33 +73,70 @@ export function Riwayat({
             <span className="uang w-12 text-[var(--pudar)]">
               {jamWib(t.waktu)}
             </span>
-            <span className="min-w-0 flex-1">
+            <span
+              className={`min-w-0 flex-1 ${
+                t.status === "void" ? "line-through" : ""
+              }`}
+            >
               {t.items.map((i) => `${i.qty}× ${i.nama_snapshot}`).join(", ")}
               <br />
-              <span className="text-xs uppercase tracking-wide text-[var(--pudar)]">
+              <span className="text-xs uppercase tracking-wide text-[var(--pudar)] no-underline">
                 {t.metode}
                 {t.status === "void" ? " · dibatalkan" : ""}
               </span>
             </span>
-            <b className="uang">{formatRupiah(totalTransaksi(t))}</b>
+            <b className={`uang ${t.status === "void" ? "line-through" : ""}`}>
+              {formatRupiah(totalTransaksi(t))}
+            </b>
             {bolehVoid && t.status === "selesai" ? (
               <button
                 type="button"
-                disabled={sibuk === t.id}
-                onClick={() => batalkan(t.id)}
-                className="rounded-lg border border-[var(--garis-kuat)] px-2.5 py-1 text-xs font-semibold text-[var(--merah)] disabled:opacity-50"
+                onClick={() => setKonfirm(t)}
+                className="rounded-lg border border-[var(--garis-kuat)] px-2.5 py-1 text-xs font-semibold text-[var(--merah)] hover:bg-[var(--merah-bg)]"
               >
-                {sibuk === t.id ? "…" : "Void"}
+                Void
               </button>
             ) : null}
           </li>
         ))}
-        {transaksi.length === 0 ? (
+        {optimis.length === 0 ? (
           <li className="rounded-xl border border-dashed border-[var(--garis-kuat)] bg-[var(--enamel)] p-6 text-center text-sm text-[var(--pudar)]">
             Belum ada transaksi hari ini.
           </li>
         ) : null}
       </ul>
+
+      {konfirm ? (
+        <Lembar
+          buka
+          judul="Batalkan transaksi?"
+          onTutup={() => setKonfirm(null)}
+        >
+          <p className="text-sm">
+            Transaksi pukul <b className="uang">{jamWib(konfirm.waktu)}</b>{" "}
+            senilai{" "}
+            <b className="uang">{formatRupiah(totalTransaksi(konfirm))}</b> akan
+            dibatalkan dan stok bahan dikembalikan sesuai resep. Tindakan ini
+            tidak bisa diurungkan.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setKonfirm(null)}
+              className="rounded-lg border border-[var(--garis-kuat)] px-4 py-3 font-semibold text-[var(--pudar)]"
+            >
+              Kembali
+            </button>
+            <button
+              type="button"
+              onClick={konfirmasiVoid}
+              className="rounded-lg bg-[var(--merah)] px-4 py-3 font-bold text-white active:scale-[.99]"
+            >
+              Ya, batalkan
+            </button>
+          </div>
+        </Lembar>
+      ) : null}
     </div>
   );
 }

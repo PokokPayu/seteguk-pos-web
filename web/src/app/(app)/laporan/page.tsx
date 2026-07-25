@@ -74,7 +74,11 @@ export default async function HalamanLaporan({
         <PilihRentang dari={dari} sampai={sampai} hariIni={hariIni} />
       </div>
 
-      <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+      <section className="relative mt-4 overflow-hidden rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4 pl-7">
+        <span
+          aria-hidden="true"
+          className="absolute bottom-0 left-4 top-0 w-px bg-[rgba(194,69,45,0.4)]"
+        />
         <h2 className="display text-lg">Buku kas</h2>
         <dl className="mt-2 space-y-1.5 text-sm">
           <div className="flex justify-between">
@@ -95,15 +99,21 @@ export default async function HalamanLaporan({
             <dd className="uang">− {formatRupiah(r.pengeluaran)}</dd>
           </div>
         </dl>
-        <div
-          className={`mt-3 flex items-center justify-between rounded-lg px-3 py-2.5 ${
-            r.laba < 0
-              ? "bg-[#F9E9E4] text-[var(--merah)]"
-              : "bg-[var(--hijau)] text-[#F6F3E6]"
-          }`}
-        >
-          <b>Laba bersih</b>
-          <b className="uang text-lg">{formatRupiah(r.laba)}</b>
+        <div className="mt-4 text-center">
+          <div
+            className={`inline-block -rotate-2 rounded-[10px] border-[3px] px-7 pb-3 pt-2.5 ${
+              r.laba < 0
+                ? "border-[var(--merah)] text-[var(--merah)]"
+                : "border-[var(--hijau-daun)] text-[var(--hijau-tua)]"
+            }`}
+          >
+            <div className="display text-[13px] tracking-[0.16em]">
+              {satuHari ? "Laba bersih hari ini" : "Laba bersih"}
+            </div>
+            <div className="display text-4xl [font-variant-numeric:tabular-nums]">
+              {formatRupiah(r.laba)}
+            </div>
+          </div>
         </div>
       </section>
 

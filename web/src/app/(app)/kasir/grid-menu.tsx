@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
 import { formatRupiah } from "@/lib/format";
+import { terbangKeKeranjang } from "./terbang";
 import type { ProdukKasir } from "./jenis";
 
 export function GridMenu({
@@ -50,21 +51,22 @@ export function GridMenu({
           return (
             <div
               key={p.id}
-              className="relative flex flex-col rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-3 text-left"
+              className="relative flex flex-col rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-3 text-left transition-colors hover:border-[var(--hijau)]"
             >
               <button
                 type="button"
-                onClick={() => onTambah(p.id, v.id)}
-                className="flex flex-1 flex-col items-start text-left"
+                onClick={(e) => {
+                  terbangKeKeranjang(e.currentTarget);
+                  onTambah(p.id, v.id);
+                }}
+                className="flex flex-1 flex-col items-start text-left transition-transform active:scale-[.98]"
               >
                 <span className="text-[11px] uppercase tracking-wide text-[var(--pudar)]">
                   {p.kategori}
                   {p.terjualHariIni > 0 ? ` · ${p.terjualHariIni}× hari ini` : ""}
                 </span>
-                <span className="mt-0.5 font-bold text-[var(--hijau-tua)]">
-                  {p.nama}
-                </span>
-                <span className="uang mt-auto pt-2 font-bold">
+                <span className="mt-0.5 font-bold">{p.nama}</span>
+                <span className="uang mt-auto pt-2 font-bold text-[var(--hijau-tua)]">
                   {formatRupiah(v.harga)}
                 </span>
               </button>
@@ -73,7 +75,7 @@ export function GridMenu({
                   type="button"
                   onClick={() => setPilihUntuk(p)}
                   aria-label={`Pilih varian ${p.nama}`}
-                  className="mt-2 rounded-lg border border-[var(--garis-kuat)] px-2 py-1 text-xs font-semibold text-[var(--hijau-tua)]"
+                  className="mt-2 self-start rounded-full border border-[var(--garis-kuat)] bg-white px-3 py-1 text-xs font-semibold text-[var(--hijau-tua)] transition-colors hover:border-[var(--hijau)]"
                 >
                   {v.nama} ▾
                 </button>
