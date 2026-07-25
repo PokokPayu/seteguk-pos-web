@@ -17,15 +17,24 @@ export function Lembar({
   children: React.ReactNode;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Simpan callback terbaru di ref agar efek fokus TIDAK bergantung pada
+  // identitas `onTutup`. Pemanggil kerap memberi arrow inline yang berganti
+  // tiap render; kalau ikut jadi dependensi, mengetik di input terkontrol
+  // menjalankan ulang efek → fokus melompat ke elemen pertama (tombol tutup).
+  const onTutupRef = useRef(onTutup);
+  useEffect(() => {
+    onTutupRef.current = onTutup;
+  }, [onTutup]);
 
   useEffect(() => {
     if (!buka) return;
     const dialog = dialogRef.current;
     const sebelumnya = document.activeElement as HTMLElement | null;
 
-    // Fokus awal ke dalam lembar supaya pembaca layar mengumumkannya.
-    const fokusPertama = dialog?.querySelector<HTMLElement>(FOKUSABLE);
-    (fokusPertama ?? dialog)?.focus();
+    // Fokus ke kontainer dialog (bukan elemen fokusable pertama, yang kebetulan
+    // tombol tutup). Pembaca layar mengumumkan lewat aria-label; Tab lalu masuk
+    // ke kontrol pertama.
+    dialog?.focus();
 
     // Kunci scroll latar selama lembar terbuka.
     const overflowLama = document.body.style.overflow;
@@ -33,7 +42,7 @@ export function Lembar({
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onTutup();
+        onTutupRef.current();
         return;
       }
       if (e.key !== "Tab" || !dialog) return;
@@ -56,7 +65,7 @@ export function Lembar({
       document.body.style.overflow = overflowLama;
       sebelumnya?.focus?.();
     };
-  }, [buka, onTutup]);
+  }, [buka]);
 
   if (!buka) return null;
   return (
