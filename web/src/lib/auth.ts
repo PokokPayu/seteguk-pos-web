@@ -10,8 +10,17 @@ export const getPengguna = cache(async (): Promise<Pengguna | null> => {
   const supabase = await buatClientServer();
   // getClaims(): verifikasi JWT lokal, tanpa round-trip ke server Auth —
   // lihat catatan di proxy.ts.
-  const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims;
+  const claims = await supabase.auth
+    .getClaims()
+    .then(({ data, error }) => {
+      if (error) console.error("getPengguna: getClaims gagal", error);
+      return data?.claims ?? null;
+    })
+    .catch((err: unknown) => {
+      // Token rusak (bukan AuthError) bikin getClaims melempar — anggap belum login.
+      console.error("getPengguna: getClaims melempar", err);
+      return null;
+    });
   if (!claims) return null;
 
   const [profilRes, izinRes] = await Promise.all([

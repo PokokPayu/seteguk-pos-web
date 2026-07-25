@@ -31,8 +31,17 @@ export async function proxy(request: NextRequest) {
   // key asimetris; bila masih HS256 otomatis fallback verifikasi ke server.
   // Token yang di-revoke tetap lolos di sini sampai kedaluwarsa — gerbang
   // per-request-nya cek profiles.aktif di getPengguna().
-  const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims;
+  const claims = await supabase.auth
+    .getClaims()
+    .then(({ data, error }) => {
+      if (error) console.error("proxy: getClaims gagal", error);
+      return data?.claims ?? null;
+    })
+    .catch((err: unknown) => {
+      // Token rusak (bukan AuthError) bikin getClaims melempar — anggap belum login.
+      console.error("proxy: getClaims melempar", err);
+      return null;
+    });
 
   const diLogin = request.nextUrl.pathname.startsWith("/login");
   if (!claims && !diLogin) {
