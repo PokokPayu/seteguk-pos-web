@@ -39,11 +39,12 @@ create policy "baca log tutup kasir" on public.cash_closing_log
 drop policy "catat tutup kasir" on public.cash_closings;
 
 -- ===== Tunai sistem satu tanggal =====
--- Angka turunan: selalu dihitung ulang dari penjualan, tidak pernah disalin
--- dari baris penutupan lama.
+-- Sengaja BUKAN security definer: hanya dipanggil dari dalam fungsi definer
+-- di bawah, jadi tetap berjalan dengan hak pemilik tabel tanpa membuka
+-- jalur baca yang melewati RLS bila kelak di-grant.
 create or replace function public.tunai_sistem_tanggal(p_tanggal date)
 returns integer
-language sql stable security definer set search_path = public
+language sql stable set search_path = public
 as $$
   select coalesce(sum(si.qty * si.harga), 0)::integer
   from public.sales s
