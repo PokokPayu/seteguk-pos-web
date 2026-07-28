@@ -137,14 +137,34 @@ rentang `[p_tanggal 00:00 WIB, p_tanggal+1 00:00 WIB)`, lalu `insert` ke
   ada baris log sebelumnya (artinya ini penutupan ulang setelah dibuka).
   Penutupan pertama yang normal tidak mengotori log.
 
+#### Dua RPC baca: `daftar_tutup_kasir` & `riwayat_tutup_kasir`
+
+Keduanya menerima `(p_dari date, p_sampai date)`, memeriksa izin `laporan` atau
+`user`, dan mengembalikan baris siap tampil termasuk kolom `oleh text` (nama
+pelaku).
+
+Halaman Laporan **tidak** bisa membaca kedua tabel itu langsung untuk mendapat
+nama pelaku: RLS `profiles` hanya mengizinkan seseorang melihat profilnya
+sendiri (`id = auth.uid()`) atau semua profil bila punya izin `user`
+(`20260724000001_skema_awal.sql`). Embedded join dari klien akan memberi `null`
+untuk pengguna lain. Melonggarkan RLS `profiles` demi ini berarti memperluas
+akses tabel identitas untuk semua orang; fungsi `security definer` yang
+mengembalikan tepat satu kolom nama jauh lebih sempit, dan konsisten dengan gaya
+RPC yang sudah dipakai di proyek ini.
+
 ## Perubahan Aplikasi
 
-### 1. `web/src/lib/kasir.ts`
+### 1. `web/src/lib/tutup-kasir.ts` (baru)
 
-Tambah `akhirHariJakarta(tanggal: string): string` dan generalisasi
-`awalHariJakarta` menjadi menerima tanggal (`YYYY-MM-DD`), bukan hanya
-`new Date()`. Dipakai untuk memvalidasi rentang di sisi TypeScript dan diuji
-di batas tengah malam.
+Berisi logika murni yang bisa diuji tanpa database: `alasanValid`,
+`nominalValid`, `tanggalValid`, `pesanErrorRpc` (memetakan pesan `raise
+exception` dari RPC ke kalimat untuk pengguna), `formatTanggalPendek`, dan
+`kalimatRiwayat` (merangkai satu baris log jadi kalimat).
+
+`web/src/lib/kasir.ts` **tidak diubah**. Rencana awal menambahkan
+`akhirHariJakarta` di sana, tetapi setelah perhitungan rentang WIB pindah ke
+dalam RPC, tidak ada pemanggil di TypeScript — fungsi itu akan lahir sebagai
+kode mati.
 
 ### 2. `web/src/app/(app)/kasir/actions.ts`
 
@@ -162,7 +182,7 @@ karakter, format tanggal `YYYY-MM-DD`), memanggil RPC, mengembalikan
 
 ### 4. `web/src/app/(app)/laporan/page.tsx`
 
-Query tambahan: baris `cash_closings` + `cash_closing_log` untuk rentang
+Query tambahan: RPC `daftar_tutup_kasir` + `riwayat_tutup_kasir` untuk rentang
 tanggal yang aktif, dijalankan bersama query yang sudah ada di `Promise.all`.
 Merender section baru `<SectionTutupKasir>` di bawah kartu ringkasan, dan
 meneruskan `bolehKoreksi = bolehAkses(pengguna.izin, "user")`.
@@ -243,9 +263,11 @@ infrastruktur uji terhadap database. Batas itu diakui eksplisit di sini.
 - Validasi alasan (kosong, spasi saja, 2 karakter, 3 karakter) dan nominal
   (negatif, pecahan, nol, sama dengan nilai lama).
 - Perhitungan selisih.
-- `awalHariJakarta` / `akhirHariJakarta` untuk satu tanggal, khususnya di batas
-  tengah malam WIB dan pergantian bulan.
-- Perumusan kalimat riwayat dari baris `cash_closing_log` (ketiga jenis aksi).
+- `tanggalValid` (format `YYYY-MM-DD`) dan penolakan tanggal di masa depan.
+- `pesanErrorRpc`: tiap pesan `raise exception` yang dikenal dipetakan ke
+  kalimat untuk pengguna; pesan tak dikenal diteruskan apa adanya.
+- `formatTanggalPendek` dan perumusan kalimat riwayat dari baris
+  `cash_closing_log` (ketiga jenis aksi).
 
 **Tidak tercakup uji otomatis — diverifikasi manual lewat checklist di rencana
 implementasi:**
