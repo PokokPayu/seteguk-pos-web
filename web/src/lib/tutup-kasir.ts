@@ -16,6 +16,7 @@ export type BarisLog = {
 export type BarisTutup = {
   tanggal: string;
   tunai_sistem: number;
+  tunai_sistem_kini: number;
   tunai_fisik: number;
   selisih: number;
   catatan: string;

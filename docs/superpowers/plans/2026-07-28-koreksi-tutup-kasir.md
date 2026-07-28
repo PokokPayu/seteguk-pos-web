@@ -1454,7 +1454,12 @@ EOF
 
 **Files:** tidak ada perubahan kode.
 
-Migrasi Task 1 dan kode Task 3-6 **harus naik bersamaan**: begitu migrasi jalan, policy insert `cash_closings` hilang, sehingga kode lama yang masih memakai `.insert()` langsung akan gagal menutup kasir.
+Migrasi Task 1 dan kode Task 3-6 **harus naik bersamaan, dan urutannya tegas: migrasi dulu, baru kode.** Kedua arah punya jendela singkat yang tidak ideal, tapi tidak simetris — jangan dibalik:
+
+- **Migrasi duluan:** begitu migrasi jalan, policy insert `cash_closings` hilang, sehingga kode lama yang masih memakai `.insert()` langsung akan gagal menutup kasir. Dampaknya sempit: hanya tombol Tutup kasir yang lumpuh selama beberapa menit sampai kode baru naik.
+- **Kode duluan (jangan lakukan):** `web/src/app/(app)/laporan/page.tsx` melempar `Error` bila RPC `daftar_tutup_kasir`/`riwayat_tutup_kasir` gagal — dan RPC itu belum ada sebelum migrasi jalan. Akibatnya SELURUH halaman Laporan mati 500 untuk semua pemegang izin `laporan`, bukan cuma section barunya.
+
+Keduanya tidak merusak data, tapi jendela kode-duluan jauh lebih parah karena melumpuhkan seluruh halaman Laporan, bukan cuma fitur baru. Karena itu: **jalankan migrasi dulu, baru push kode.**
 
 - [ ] **Step 1: User menjalankan migrasi**
 
@@ -1480,6 +1485,7 @@ Hal-hal berikut tidak tercakup unit test (RLS, isi RPC, atomisitas transaksi), j
       `await supabase.rpc('ubah_tutup_kasir', { p_tanggal: '<tanggal>', p_tunai_fisik: 1, p_alasan: 'tes' })`
       → harus error `butuh izin user`.
 - [ ] Uji bypass log sebagai pemegang izin `user`: `supabase.from('cash_closings').update({ tunai_fisik: 1 }).eq('tanggal', '<tanggal>')`, lalu `.delete()`, lalu `.insert()` → ketiganya harus gagal / tidak mengubah baris, karena `cash_closings` tidak punya policy tulis.
+- [ ] Tutup sebuah tanggal **lampau** yang belum pernah dikoreksi, lewat Laporan, dengan alasan → berhasil, dan `cash_closing_log` mendapat satu baris `tutup_ulang` berisi alasan itu. (Tanpa ini, penutupan retroaktif tidak berjejak.)
 
 - [ ] **Step 4: Catat hasil**
 

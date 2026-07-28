@@ -8,7 +8,7 @@
 -- kini lewat tutup_kasir().
 
 -- ===== Log koreksi =====
-create table public.cash_closing_log (
+create table if not exists public.cash_closing_log (
   id uuid primary key default gen_random_uuid(),
   -- tanggal kasir yang dikoreksi, BUKAN tanggal aksi (itu created_at)
   tanggal date not null,
@@ -23,12 +23,14 @@ create table public.cash_closing_log (
   created_by uuid not null references public.profiles (id),
   created_at timestamptz not null default now()
 );
-create index cash_closing_log_tanggal_idx on public.cash_closing_log (tanggal);
+create index if not exists cash_closing_log_tanggal_idx
+  on public.cash_closing_log (tanggal);
 
 alter table public.cash_closing_log enable row level security;
 
 -- Hanya bisa dibaca. Tidak ada policy insert/update/delete: penulisan eksklusif
 -- lewat fungsi security definer di bawah, dan baris log tidak pernah diubah.
+drop policy if exists "baca log tutup kasir" on public.cash_closing_log;
 create policy "baca log tutup kasir" on public.cash_closing_log
   for select using (
     public.has_permission(auth.uid(), 'laporan')
@@ -36,7 +38,7 @@ create policy "baca log tutup kasir" on public.cash_closing_log
   );
 
 -- ===== Tutup jalur tulis langsung ke cash_closings =====
-drop policy "catat tutup kasir" on public.cash_closings;
+drop policy if exists "catat tutup kasir" on public.cash_closings;
 
 -- ===== Tunai sistem satu tanggal =====
 -- Sengaja BUKAN security definer: hanya dipanggil dari dalam fungsi definer
@@ -88,6 +90,13 @@ begin
   if p_tunai_fisik is null or p_tunai_fisik < 0 then
     raise exception 'nominal tidak valid';
   end if;
+  -- Menutup tanggal lampau mengunci void untuk seluruh hari itu — aksi
+  -- ber-privilege, jadi alasannya wajib dan wajib berjejak. Penutupan kasir
+  -- untuk hari berjalan tetap rutin: tanpa alasan, tanpa log.
+  if p_tanggal <> v_hari_ini
+     and length(btrim(coalesce(p_catatan, ''))) < 3 then
+    raise exception 'alasan wajib diisi';
+  end if;
 
   v_sistem := public.tunai_sistem_tanggal(p_tanggal);
   -- Ada log untuk tanggal ini = tanggal ini pernah dibuka/dikoreksi, jadi
@@ -107,7 +116,7 @@ begin
     raise exception 'kasir tanggal ini sudah ditutup';
   end;
 
-  if v_pernah then
+  if v_pernah or p_tanggal <> v_hari_ini then
     insert into public.cash_closing_log
       (tanggal, aksi, tunai_sistem_baru, tunai_fisik_baru, selisih_baru,
        alasan, created_by)
@@ -139,6 +148,9 @@ begin
   if not public.has_permission(auth.uid(), 'user') then
     raise exception 'butuh izin user';
   end if;
+  if p_tanggal is null then
+    raise exception 'tanggal tidak valid';
+  end if;
   if p_tunai_fisik is null or p_tunai_fisik < 0 then
     raise exception 'nominal tidak valid';
   end if;
@@ -152,11 +164,11 @@ begin
   if not found then
     raise exception 'tutup kasir tanggal ini sudah dibuka';
   end if;
-  if v_lama.tunai_fisik = p_tunai_fisik then
-    raise exception 'nominal tidak berubah';
-  end if;
 
   v_sistem := public.tunai_sistem_tanggal(p_tanggal);
+  if v_lama.tunai_fisik = p_tunai_fisik and v_lama.tunai_sistem = v_sistem then
+    raise exception 'nominal tidak berubah';
+  end if;
 
   update public.cash_closings
   set tunai_sistem = v_sistem,
@@ -189,6 +201,9 @@ begin
   if not public.has_permission(auth.uid(), 'user') then
     raise exception 'butuh izin user';
   end if;
+  if p_tanggal is null then
+    raise exception 'tanggal tidak valid';
+  end if;
   if length(btrim(coalesce(p_alasan, ''))) < 3 then
     raise exception 'alasan wajib diisi';
   end if;
@@ -218,6 +233,7 @@ create or replace function public.daftar_tutup_kasir(p_dari date, p_sampai date)
 returns table (
   tanggal date,
   tunai_sistem integer,
+  tunai_sistem_kini integer,
   tunai_fisik integer,
   selisih integer,
   catatan text,
@@ -231,8 +247,9 @@ begin
     raise exception 'butuh izin laporan';
   end if;
   return query
-    select c.tanggal, c.tunai_sistem, c.tunai_fisik, c.selisih, c.catatan,
-           coalesce(p.nama, 'Pengguna')
+    select c.tanggal, c.tunai_sistem,
+           public.tunai_sistem_tanggal(c.tanggal), c.tunai_fisik, c.selisih,
+           c.catatan, coalesce(p.nama, 'Pengguna')
     from public.cash_closings c
     left join public.profiles p on p.id = c.created_by
     where c.tanggal between p_dari and p_sampai

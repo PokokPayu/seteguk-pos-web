@@ -6,6 +6,7 @@ import { FormTutupKasir } from "@/components/form-tutup-kasir";
 import { useToast } from "@/components/toast";
 import { formatRupiah } from "@/lib/format";
 import {
+  alasanValid,
   formatTanggalPendek,
   kalimatRiwayat,
   type BarisLog,
@@ -79,7 +80,7 @@ function LembarBuka({
       ) : null}
       <button
         type="button"
-        disabled={sibuk || alasan.trim().length < 3}
+        disabled={sibuk || !alasanValid(alasan)}
         onClick={jalankan}
         className="mt-4 w-full rounded-lg bg-[var(--merah)] px-4 py-3 font-bold text-[#F6F3E6] active:scale-[.99] disabled:opacity-50"
       >
@@ -129,7 +130,14 @@ export function SectionTutupKasir({
         <tbody>
           {baris.map((b) => (
             <tr key={b.tanggal} className="border-t border-[var(--garis)]">
-              <td className="py-1.5">{formatTanggalPendek(b.tanggal)}</td>
+              <td className="py-1.5">
+                {formatTanggalPendek(b.tanggal)}
+                {b.catatan ? (
+                  <span className="block text-xs text-[var(--pudar)]">
+                    {b.catatan}
+                  </span>
+                ) : null}
+              </td>
               <td className="uang py-1.5 text-right">
                 {formatRupiah(b.tunai_sistem)}
               </td>
@@ -219,22 +227,31 @@ export function SectionTutupKasir({
         onTutup={() => setAksi(null)}
       >
         {aksi === null ? null : aksi.jenis === "ubah" ? (
-          <FormTutupKasir
-            tunaiSistem={aksi.baris.tunai_sistem}
-            nilaiAwal={aksi.baris.tunai_fisik}
-            labelTombol="Simpan perubahan"
-            perluAlasan
-            onSimpan={async (tunaiFisik, alasan) => {
-              const hasil = await ubahTutupKasir(
-                aksi.baris.tanggal,
-                Math.round(tunaiFisik),
-                alasan
-              );
-              if (hasil.ok) toast("Nominal tutup kasir diperbarui");
-              return hasil;
-            }}
-            onSelesai={() => setAksi(null)}
-          />
+          <>
+            {aksi.baris.tunai_sistem_kini !== aksi.baris.tunai_sistem ? (
+              <p className="mb-3 rounded-lg border border-[var(--garis)] bg-white px-3 py-2 text-xs text-[var(--pudar)]">
+                Tunai sistem berubah sejak kasir ditutup (tercatat{" "}
+                {formatRupiah(aksi.baris.tunai_sistem)}) karena ada penjualan
+                setelahnya. Selisih akan dihitung ulang memakai angka terbaru.
+              </p>
+            ) : null}
+            <FormTutupKasir
+              tunaiSistem={aksi.baris.tunai_sistem_kini}
+              nilaiAwal={aksi.baris.tunai_fisik}
+              labelTombol="Simpan perubahan"
+              perluAlasan
+              onSimpan={async (tunaiFisik, alasan) => {
+                const hasil = await ubahTutupKasir(
+                  aksi.baris.tanggal,
+                  Math.round(tunaiFisik),
+                  alasan
+                );
+                if (hasil.ok) toast("Nominal tutup kasir diperbarui");
+                return hasil;
+              }}
+              onSelesai={() => setAksi(null)}
+            />
+          </>
         ) : aksi.jenis === "buka" ? (
           <LembarBuka baris={aksi.baris} onTutup={() => setAksi(null)} />
         ) : (

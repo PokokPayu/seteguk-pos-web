@@ -70,6 +70,7 @@ export default async function HalamanLaporan({
     (b) => ({
       tanggal: String(b.tanggal),
       tunai_sistem: Number(b.tunai_sistem),
+      tunai_sistem_kini: Number(b.tunai_sistem_kini),
       tunai_fisik: Number(b.tunai_fisik),
       selisih: Number(b.selisih),
       catatan: String(b.catatan ?? ""),
