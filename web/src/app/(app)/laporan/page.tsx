@@ -8,8 +8,11 @@ import {
   ringkasRentang,
   type BarisHarian,
 } from "@/lib/laporan";
+import { bolehAkses } from "@/lib/permissions";
+import type { BarisLog, BarisTutup } from "@/lib/tutup-kasir";
 import { GrafikLaba } from "./grafik-laba";
 import { PilihRentang } from "./pilih-rentang";
+import { SectionTutupKasir } from "./section-tutup-kasir";
 
 const TGL = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -18,7 +21,7 @@ export default async function HalamanLaporan({
 }: {
   searchParams: Promise<{ dari?: string; sampai?: string }>;
 }) {
-  await wajibIzin("laporan");
+  const pengguna = await wajibIzin("laporan");
   const sp = await searchParams;
   const hariIni = tanggalJakarta(new Date());
   const dari = TGL.test(sp.dari ?? "") ? (sp.dari as string) : hariIni;
@@ -28,15 +31,23 @@ export default async function HalamanLaporan({
   const sampai = sampaiMentah < dari ? dari : sampaiMentah;
 
   const supabase = await buatClientServer();
-  const [harianRes, terlarisRes] = await Promise.all([
+  const [harianRes, terlarisRes, tutupRes, logRes] = await Promise.all([
     supabase.rpc("laporan_harian", { p_dari: dari, p_sampai: sampai }),
     supabase.rpc("terlaris", { p_dari: dari, p_sampai: sampai, p_limit: 5 }),
+    supabase.rpc("daftar_tutup_kasir", { p_dari: dari, p_sampai: sampai }),
+    supabase.rpc("riwayat_tutup_kasir", { p_dari: dari, p_sampai: sampai }),
   ]);
   if (harianRes.error) {
     throw new Error(`Gagal memuat laporan: ${harianRes.error.message}`);
   }
   if (terlarisRes.error) {
     throw new Error(`Gagal memuat terlaris: ${terlarisRes.error.message}`);
+  }
+  if (tutupRes.error) {
+    throw new Error(`Gagal memuat tutup kasir: ${tutupRes.error.message}`);
+  }
+  if (logRes.error) {
+    throw new Error(`Gagal memuat riwayat kasir: ${logRes.error.message}`);
   }
 
   const harian: BarisHarian[] = (
@@ -55,6 +66,37 @@ export default async function HalamanLaporan({
   const terlaris = ((terlarisRes.data ?? []) as Record<string, unknown>[]).map(
     (t) => ({ nama: String(t.nama), terjual: Number(t.terjual) })
   );
+  const tutup = ((tutupRes.data ?? []) as Record<string, unknown>[]).map(
+    (b) => ({
+      tanggal: String(b.tanggal),
+      tunai_sistem: Number(b.tunai_sistem),
+      tunai_fisik: Number(b.tunai_fisik),
+      selisih: Number(b.selisih),
+      catatan: String(b.catatan ?? ""),
+      oleh: String(b.oleh ?? "Pengguna"),
+    })
+  ) as BarisTutup[];
+  const log = ((logRes.data ?? []) as Record<string, unknown>[]).map((b) => ({
+    tanggal: String(b.tanggal),
+    aksi: String(b.aksi) as BarisLog["aksi"],
+    tunai_fisik_lama:
+      b.tunai_fisik_lama === null ? null : Number(b.tunai_fisik_lama),
+    tunai_fisik_baru:
+      b.tunai_fisik_baru === null ? null : Number(b.tunai_fisik_baru),
+    alasan: String(b.alasan),
+    oleh: String(b.oleh ?? "Pengguna"),
+    created_at: String(b.created_at),
+  })) as BarisLog[];
+
+  // Tanggal dalam rentang yang belum punya penutupan. laporan_harian sudah
+  // memuat satu baris per hari beserta total tunainya, jadi tidak perlu query
+  // tambahan — kolom `tunai` memakai definisi yang sama dengan
+  // tunai_sistem_tanggal di RPC (penjualan tunai berstatus selesai hari itu).
+  const sudah = new Set(tutup.map((t) => t.tanggal));
+  const kosong = harian
+    .filter((h) => !sudah.has(h.tanggal) && h.tanggal <= hariIni)
+    .map((h) => ({ tanggal: h.tanggal, tunaiSistem: h.tunai }))
+    .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
   const r = ringkasRentang(harian);
   const selisih = harian.reduce(
@@ -141,6 +183,13 @@ export default async function HalamanLaporan({
       <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
         <GrafikLaba baris={harian} />
       </section>
+
+      <SectionTutupKasir
+        baris={tutup}
+        kosong={kosong}
+        log={log}
+        bolehKoreksi={bolehAkses(pengguna.izin, "user")}
+      />
 
       {bulanan.length > 1 ? (
         <section className="mt-4 overflow-x-auto rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
