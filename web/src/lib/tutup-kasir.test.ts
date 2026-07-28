@@ -143,4 +143,24 @@ describe("kalimatRiwayat", () => {
       kalimatRiwayat({ ...DASAR, created_at: "2026-08-03T20:00:00Z" })
     ).toContain("4 Agu 2026");
   });
+  it("nominal null ditandai, bukan ditulis nol", () => {
+    expect(
+      kalimatRiwayat({ ...DASAR, tunai_fisik_lama: null })
+    ).toBe(
+      'Nominal diubah (tidak tercatat) → Rp380.000 — Arvin, 3 Agu 2026, "salah ketik nol"'
+    );
+  });
+  it("aksi buka dengan nominal null ditandai", () => {
+    expect(
+      kalimatRiwayat({
+        ...DASAR,
+        aksi: "buka",
+        tunai_fisik_lama: null,
+        tunai_fisik_baru: null,
+        alasan: "kasir salah pencet",
+      })
+    ).toBe(
+      'Kasir dibuka kembali (fisik (tidak tercatat)) — Arvin, 3 Agu 2026, "kasir salah pencet"'
+    );
+  });
 });

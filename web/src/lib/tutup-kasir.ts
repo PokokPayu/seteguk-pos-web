@@ -69,15 +69,21 @@ export function formatTanggalPendek(tanggal: string): string {
   return `${Number(hari)} ${BULAN[Number(bulan) - 1]} ${tahun}`;
 }
 
+// Log adalah jejak audit uang: nominal yang hilang harus terlihat hilang,
+// bukan tersamar jadi Rp0 yang tak bisa dibedakan dari nol sungguhan.
+function uangLog(n: number | null): string {
+  return n === null ? "(tidak tercatat)" : formatRupiah(n);
+}
+
 export function kalimatRiwayat(b: BarisLog): string {
   const waktu = formatTanggalPendek(tanggalJakarta(new Date(b.created_at)));
   const inti =
     b.aksi === "ubah"
-      ? `Nominal diubah ${formatRupiah(b.tunai_fisik_lama ?? 0)} → ${formatRupiah(
-          b.tunai_fisik_baru ?? 0
+      ? `Nominal diubah ${uangLog(b.tunai_fisik_lama)} → ${uangLog(
+          b.tunai_fisik_baru
         )}`
       : b.aksi === "buka"
-        ? `Kasir dibuka kembali (fisik ${formatRupiah(b.tunai_fisik_lama ?? 0)})`
-        : `Ditutup ulang ${formatRupiah(b.tunai_fisik_baru ?? 0)}`;
+        ? `Kasir dibuka kembali (fisik ${uangLog(b.tunai_fisik_lama)})`
+        : `Ditutup ulang ${uangLog(b.tunai_fisik_baru)}`;
   return `${inti} — ${b.oleh}, ${waktu}, "${b.alasan}"`;
 }
