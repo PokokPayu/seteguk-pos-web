@@ -1062,9 +1062,9 @@ EOF
 
 **Interfaces:**
 - Consumes: RPC `daftar_tutup_kasir`, `riwayat_tutup_kasir` (Task 1); `BarisLog`, `BarisTutup`, `kalimatRiwayat`, `formatTanggalPendek` (Task 2); `FormTutupKasir` (Task 4); `ubahTutupKasir`, `bukaKasir`, `tutupKasirTanggal` (Task 5); `Lembar`, `useToast`, `formatRupiah`, `bolehAkses`.
-- Produces: `SectionTutupKasir(props: { baris: BarisTutup[]; log: BarisLog[]; tanggalKosong: string[]; bolehKoreksi: boolean })`.
+- Produces: `SectionTutupKasir(props: { baris: BarisTutup[]; kosong: { tanggal: string; tunaiSistem: number }[]; log: BarisLog[]; bolehKoreksi: boolean })`.
 
-`tanggalKosong` adalah tanggal dalam rentang yang **belum** punya penutupan — dihitung di server dari `laporan_harian` yang sudah dimuat halaman ini.
+`kosong` adalah tanggal dalam rentang yang **belum** punya penutupan, lengkap dengan tunai sistem hari itu. Keduanya dihitung di server dari `laporan_harian` yang sudah dimuat halaman ini (kolom `tunai` = total penjualan tunai berstatus selesai pada tanggal itu, definisi yang sama dengan `tunai_sistem_tanggal` di RPC), jadi lembar "Tutup kasir tanggal X" bisa menampilkan angka sistem yang benar dan preview selisih yang bermakna — tanpa query tambahan.
 
 - [ ] **Step 1: Buat komponen section**
 
@@ -1089,7 +1089,7 @@ import { bukaKasir, tutupKasirTanggal, ubahTutupKasir } from "./actions";
 type Aksi =
   | { jenis: "ubah"; baris: BarisTutup }
   | { jenis: "buka"; baris: BarisTutup }
-  | { jenis: "tutup"; tanggal: string };
+  | { jenis: "tutup"; tanggal: string; tunaiSistem: number };
 
 function Riwayat({ log }: { log: BarisLog[] }) {
   if (log.length === 0) return null;
@@ -1164,13 +1164,13 @@ function LembarBuka({
 
 export function SectionTutupKasir({
   baris,
+  kosong,
   log,
-  tanggalKosong,
   bolehKoreksi,
 }: {
   baris: BarisTutup[];
+  kosong: { tanggal: string; tunaiSistem: number }[];
   log: BarisLog[];
-  tanggalKosong: string[];
   bolehKoreksi: boolean;
 }) {
   const toast = useToast();
@@ -1237,20 +1237,26 @@ export function SectionTutupKasir({
               ) : null}
             </tr>
           ))}
-          {tanggalKosong.map((t) => (
-            <tr key={t} className="border-t border-[var(--garis)]">
-              <td className="py-1.5">{formatTanggalPendek(t)}</td>
-              <td
-                colSpan={4}
-                className="py-1.5 text-[var(--pudar)]"
-              >
+          {kosong.map((k) => (
+            <tr key={k.tanggal} className="border-t border-[var(--garis)]">
+              <td className="py-1.5">{formatTanggalPendek(k.tanggal)}</td>
+              <td className="uang py-1.5 text-right">
+                {formatRupiah(k.tunaiSistem)}
+              </td>
+              <td colSpan={3} className="py-1.5 text-[var(--pudar)]">
                 Belum ditutup
               </td>
               {bolehKoreksi ? (
                 <td className="py-1.5 text-right whitespace-nowrap">
                   <button
                     type="button"
-                    onClick={() => setAksi({ jenis: "tutup", tanggal: t })}
+                    onClick={() =>
+                      setAksi({
+                        jenis: "tutup",
+                        tanggal: k.tanggal,
+                        tunaiSistem: k.tunaiSistem,
+                      })
+                    }
                     className="text-sm font-semibold text-[var(--hijau)] underline"
                   >
                     Tutup kasir
@@ -1259,7 +1265,7 @@ export function SectionTutupKasir({
               ) : null}
             </tr>
           ))}
-          {baris.length === 0 && tanggalKosong.length === 0 ? (
+          {baris.length === 0 && kosong.length === 0 ? (
             <tr>
               <td
                 colSpan={bolehKoreksi ? 6 : 5}
@@ -1306,7 +1312,7 @@ export function SectionTutupKasir({
           <LembarBuka baris={aksi.baris} onTutup={() => setAksi(null)} />
         ) : (
           <FormTutupKasir
-            tunaiSistem={0}
+            tunaiSistem={aksi.tunaiSistem}
             labelTombol="Simpan tutup kasir"
             perluAlasan
             onSimpan={async (tunaiFisik, alasan) => {
@@ -1327,8 +1333,6 @@ export function SectionTutupKasir({
   );
 }
 ```
-
-Catatan: pada lembar "Tutup kasir tanggal X", `tunaiSistem` diberi `0` karena angka sistem untuk tanggal lampau tidak dimuat di klien — RPC menghitungnya sendiri saat menyimpan, dan hasil sebenarnya langsung tampil di tabel setelah `revalidatePath`. Preview selisih di lembar itu karenanya sama dengan nominal yang diketik; ini disengaja dan bukan bug.
 
 - [ ] **Step 2: Muat data & render section di halaman Laporan**
 
@@ -1396,13 +1400,14 @@ const pengguna = await wajibIzin("laporan");
   })) as BarisLog[];
 
   // Tanggal dalam rentang yang belum punya penutupan. laporan_harian sudah
-  // memuat satu baris per hari, jadi tidak perlu query tambahan.
+  // memuat satu baris per hari beserta total tunainya, jadi tidak perlu query
+  // tambahan — kolom `tunai` memakai definisi yang sama dengan
+  // tunai_sistem_tanggal di RPC (penjualan tunai berstatus selesai hari itu).
   const sudah = new Set(tutup.map((t) => t.tanggal));
-  const tanggalKosong = harian
-    .map((h) => h.tanggal)
-    .filter((t) => !sudah.has(t) && t <= hariIni)
-    .sort()
-    .reverse();
+  const kosong = harian
+    .filter((h) => !sudah.has(h.tanggal) && h.tanggal <= hariIni)
+    .map((h) => ({ tanggal: h.tanggal, tunaiSistem: h.tunai }))
+    .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 ```
 
 6. Sisipkan section di JSX, tepat setelah `</section>` penutup blok `GrafikLaba` (baris 143):
@@ -1410,8 +1415,8 @@ const pengguna = await wajibIzin("laporan");
 ```tsx
       <SectionTutupKasir
         baris={tutup}
+        kosong={kosong}
         log={log}
-        tanggalKosong={tanggalKosong}
         bolehKoreksi={bolehAkses(pengguna.izin, "user")}
       />
 ```
