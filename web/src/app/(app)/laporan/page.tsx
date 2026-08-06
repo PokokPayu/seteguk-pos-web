@@ -3,7 +3,10 @@ import { buatClientServer } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/format";
 import { tanggalJakarta } from "@/lib/kasir";
 import {
+  jumlahHari,
   kelompokBulanan,
+  MAKS_HARI_LAPORAN,
+  normalkanRentang,
   rataPerTransaksi,
   ringkasRentang,
   type BarisHarian,
@@ -14,8 +17,6 @@ import { GrafikLaba } from "./grafik-laba";
 import { PilihRentang } from "./pilih-rentang";
 import { SectionTutupKasir } from "./section-tutup-kasir";
 
-const TGL = /^\d{4}-\d{2}-\d{2}$/;
-
 export default async function HalamanLaporan({
   searchParams,
 }: {
@@ -24,11 +25,11 @@ export default async function HalamanLaporan({
   const pengguna = await wajibIzin("laporan");
   const sp = await searchParams;
   const hariIni = tanggalJakarta(new Date());
-  const dari = TGL.test(sp.dari ?? "") ? (sp.dari as string) : hariIni;
-  const sampaiMentah = TGL.test(sp.sampai ?? "")
-    ? (sp.sampai as string)
-    : hariIni;
-  const sampai = sampaiMentah < dari ? dari : sampaiMentah;
+  const { dari, sampai, dipangkas } = normalkanRentang(
+    sp.dari,
+    sp.sampai,
+    hariIni
+  );
 
   const supabase = await buatClientServer();
   const [harianRes, terlarisRes, tutupRes, logRes] = await Promise.all([
@@ -63,6 +64,17 @@ export default async function HalamanLaporan({
     qris: Number(b.qris),
     selisih_kasir: b.selisih_kasir === null ? null : Number(b.selisih_kasir),
   }));
+  // laporan_harian mengembalikan tepat satu baris per hari lewat
+  // generate_series, jadi hasil yang lebih pendek berarti PostgREST memotongnya
+  // di plafon db-max-rows. normalkanRentang sudah menjaga jarak dari plafon
+  // itu; jaring ini untuk kalau plafonnya kelak diturunkan di dashboard.
+  // Potongan tidak boleh lewat sebagai laporan utuh.
+  const hariDiminta = jumlahHari(dari, sampai);
+  if (harian.length < hariDiminta) {
+    throw new Error(
+      `Gagal memuat laporan: hasil terpotong (${harian.length} dari ${hariDiminta} hari).`
+    );
+  }
   const terlaris = ((terlarisRes.data ?? []) as Record<string, unknown>[]).map(
     (t) => ({ nama: String(t.nama), terjual: Number(t.terjual) })
   );
@@ -113,6 +125,13 @@ export default async function HalamanLaporan({
       <p className="mt-1 text-sm text-[var(--pudar)]">
         {satuHari ? `Tanggal ${dari}` : `${dari} s/d ${sampai}`}
       </p>
+      {dipangkas ? (
+        <p className="mt-2 rounded-lg border border-[var(--garis)] bg-white px-3 py-2 text-sm text-[var(--pudar)]">
+          Rentang yang diminta lebih panjang dari {MAKS_HARI_LAPORAN} hari, jadi
+          dipersempit ke {MAKS_HARI_LAPORAN} hari terakhir. Laporan harian
+          dibatasi setahun supaya angkanya tidak terpotong diam-diam.
+        </p>
+      ) : null}
       <div className="mt-3">
         <PilihRentang dari={dari} sampai={sampai} hariIni={hariIni}>
           <section className="relative mt-4 overflow-hidden rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4 pl-7">

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  jumlahHari,
   kelompokBulanan,
   labelHari,
+  MAKS_HARI_LAPORAN,
+  normalkanRentang,
   rataPerTransaksi,
   ringkasRentang,
   type BarisHarian,
@@ -100,5 +103,87 @@ describe("labelHari", () => {
     // regresi: memakai `${t}T00:00:00+07:00` membuat 24 Juli 2026 (Jumat)
     // terbaca sebagai Kamis
     expect(labelHari("2026-07-24")).not.toBe("Kam");
+  });
+});
+
+describe("jumlahHari", () => {
+  it("tanggal yang sama dihitung satu hari", () => {
+    expect(jumlahHari("2026-08-06", "2026-08-06")).toBe(1);
+  });
+
+  it("menghitung inklusif dan menyeberangi batas bulan", () => {
+    expect(jumlahHari("2026-07-31", "2026-08-06")).toBe(7);
+  });
+
+  it("menyeberangi batas tahun", () => {
+    expect(jumlahHari("2025-12-31", "2026-01-01")).toBe(2);
+  });
+});
+
+describe("normalkanRentang", () => {
+  const hariIni = "2026-08-06";
+
+  it("tanpa parameter, memakai hari ini", () => {
+    expect(normalkanRentang(undefined, undefined, hariIni)).toEqual({
+      dari: hariIni,
+      sampai: hariIni,
+      dipangkas: false,
+    });
+  });
+
+  it("meneruskan rentang wajar apa adanya", () => {
+    expect(normalkanRentang("2026-07-01", "2026-07-31", hariIni)).toEqual({
+      dari: "2026-07-01",
+      sampai: "2026-07-31",
+      dipangkas: false,
+    });
+  });
+
+  it("menolak tanggal yang lolos pola tapi tidak ada di kalender", () => {
+    // 31 Februari lolos /^\d{4}-\d{2}-\d{2}$/ tapi bukan tanggal sungguhan
+    expect(normalkanRentang("2026-02-31", "2026-08-06", hariIni).dari).toBe(
+      hariIni
+    );
+  });
+
+  it("sampai tidak boleh melewati hari ini walau URL diedit tangan", () => {
+    expect(normalkanRentang("2026-08-01", "2030-01-01", hariIni).sampai).toBe(
+      hariIni
+    );
+  });
+
+  it("sampai lebih awal dari dari akan disamakan", () => {
+    expect(normalkanRentang("2026-08-05", "2026-08-01", hariIni)).toEqual({
+      dari: "2026-08-05",
+      sampai: "2026-08-05",
+      dipangkas: false,
+    });
+  });
+
+  // Inti bug: laporan_harian mengembalikan satu baris per hari, dan PostgREST
+  // memotong diam-diam di 1000 baris — memotong dari DEPAN, sehingga hari-hari
+  // terkini justru yang hilang dan laporan tampil nol tanpa error apa pun.
+  it("memangkas rentang yang melebihi batas, menyisakan hari terkini", () => {
+    const r = normalkanRentang("1990-01-01", hariIni, hariIni);
+    expect(r.dipangkas).toBe(true);
+    expect(r.sampai).toBe(hariIni);
+    expect(jumlahHari(r.dari, r.sampai)).toBe(MAKS_HARI_LAPORAN);
+  });
+
+  it("tahun setengah diketik pun tidak lolos jadi rentang raksasa", () => {
+    // input type=date mengirim 0002-08-01 saat pengguna baru mengetik "2"
+    const r = normalkanRentang("0002-08-01", hariIni, hariIni);
+    expect(jumlahHari(r.dari, r.sampai)).toBe(MAKS_HARI_LAPORAN);
+  });
+
+  it("rentang tepat sebesar batas tidak dianggap dipangkas", () => {
+    const r = normalkanRentang("2025-08-06", hariIni, hariIni);
+    expect(jumlahHari(r.dari, r.sampai)).toBe(MAKS_HARI_LAPORAN);
+    expect(r.dipangkas).toBe(false);
+  });
+
+  it("hasilnya selalu di bawah batas baris PostgREST", () => {
+    const r = normalkanRentang("1900-01-01", hariIni, hariIni);
+    expect(jumlahHari(r.dari, r.sampai)).toBeLessThan(1000);
   });
 });
