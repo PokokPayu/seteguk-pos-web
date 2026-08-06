@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatRupiah } from "@/lib/format";
-import { labelHari, type BarisHarian } from "@/lib/laporan";
+import { judulGrafik, labelHari, type BarisHarian } from "@/lib/laporan";
 
 export function GrafikLaba({ baris }: { baris: BarisHarian[] }) {
   const [tabel, setTabel] = useState(false);
@@ -20,7 +20,9 @@ export function GrafikLaba({ baris }: { baris: BarisHarian[] }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <h2 className="display text-lg">Laba bersih 7 hari terakhir</h2>
+        <h2 className="display text-lg">
+          {judulGrafik(baris.length, data.length)}
+        </h2>
         <button
           type="button"
           onClick={() => setTabel((t) => !t)}

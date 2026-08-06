@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  judulGrafik,
   jumlahHari,
   kelompokBulanan,
   labelHari,
   MAKS_HARI_LAPORAN,
   normalkanRentang,
+  rentangSetelahUbah,
   rataPerTransaksi,
   ringkasRentang,
   type BarisHarian,
@@ -185,5 +187,68 @@ describe("normalkanRentang", () => {
   it("hasilnya selalu di bawah batas baris PostgREST", () => {
     const r = normalkanRentang("1900-01-01", hariIni, hariIni);
     expect(jumlahHari(r.dari, r.sampai)).toBeLessThan(1000);
+  });
+});
+
+describe("rentangSetelahUbah", () => {
+  const hariIni = "2026-08-06";
+
+  // Bug: input mulai dulu dibatasi max={sampai} dan input akhir min={dari},
+  // sehingga dari rentang 1–31 Juli seluruh tanggal Agustus terkunci di picker.
+  it("maju sebulan lewat input mulai tidak terkunci", () => {
+    expect(
+      rentangSetelahUbah("dari", "2026-08-01", "2026-07-01", "2026-07-31", hariIni)
+    ).toEqual({ dari: "2026-08-01", sampai: "2026-08-01" });
+  });
+
+  it("mundur sebulan lewat input akhir tidak terkunci", () => {
+    expect(
+      rentangSetelahUbah("sampai", "2026-06-15", "2026-07-01", "2026-07-31", hariIni)
+    ).toEqual({ dari: "2026-06-15", sampai: "2026-06-15" });
+  });
+
+  it("perubahan biasa hanya menggeser sisi yang diubah", () => {
+    expect(
+      rentangSetelahUbah("sampai", "2026-07-20", "2026-07-01", "2026-07-31", hariIni)
+    ).toEqual({ dari: "2026-07-01", sampai: "2026-07-20" });
+    expect(
+      rentangSetelahUbah("dari", "2026-07-10", "2026-07-01", "2026-07-31", hariIni)
+    ).toEqual({ dari: "2026-07-10", sampai: "2026-07-31" });
+  });
+
+  it("mengabaikan ruas yang dikosongkan", () => {
+    expect(
+      rentangSetelahUbah("dari", "", "2026-07-01", "2026-07-31", hariIni)
+    ).toBeNull();
+  });
+
+  it("mengabaikan tahun yang baru setengah diketik", () => {
+    expect(
+      rentangSetelahUbah("dari", "0002-08-01", "2026-07-01", "2026-07-31", hariIni)
+    ).toBeNull();
+  });
+
+  it("mengabaikan hari yang belum terjadi", () => {
+    expect(
+      rentangSetelahUbah("sampai", "2026-09-01", "2026-07-01", "2026-07-31", hariIni)
+    ).toBeNull();
+  });
+
+  it("mengabaikan tanggal yang tidak ada di kalender", () => {
+    expect(
+      rentangSetelahUbah("dari", "2026-02-31", "2026-07-01", "2026-07-31", hariIni)
+    ).toBeNull();
+  });
+});
+
+describe("judulGrafik", () => {
+  it("menyebut rentang saat yang tampil hanya sebagian", () => {
+    expect(judulGrafik(31, 7)).toBe("Laba bersih 7 hari terakhir dalam rentang");
+  });
+
+  it("tidak mengaku 7 hari terakhir saat seluruh rentang tampil", () => {
+    expect(judulGrafik(7, 7)).toBe("Laba bersih per hari");
+    expect(judulGrafik(3, 3)).toBe("Laba bersih per hari");
+    expect(judulGrafik(1, 1)).toBe("Laba bersih per hari");
   });
 });

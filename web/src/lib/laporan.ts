@@ -147,6 +147,51 @@ export function normalkanRentang(
   return { dari: keTanggal(dari), sampai: keTanggal(sampai), dipangkas };
 }
 
+/**
+ * Tanggal paling awal yang masuk akal diminta. Skema aplikasi ini baru dibuat
+ * Juli 2026, jadi tidak ada data yang bisa mendahuluinya — tanggal sebelum ini
+ * pasti salah ketik, bukan permintaan sungguhan.
+ */
+export const AWAL_LAPORAN = "2026-01-01";
+
+/**
+ * Rentang baru setelah salah satu ujung diubah di pemilih tanggal, atau null
+ * bila perubahan itu harus diabaikan.
+ *
+ * Sebelumnya kedua input saling mengunci lewat max={sampai} dan min={dari}:
+ * dari rentang 1–31 Juli, seluruh tanggal Agustus tidak bisa diklik di input
+ * mulai, dan di picker iPad benar-benar mati. Alih-alih mengunci, ujung yang
+ * tidak diubah ikut digeser supaya rentangnya tetap sah — memilih tanggal
+ * mulai setelah tanggal akhir berarti pindah ke hari itu.
+ */
+export function rentangSetelahUbah(
+  sisi: "dari" | "sampai",
+  nilai: string,
+  dari: string,
+  sampai: string,
+  hariIni: string
+): { dari: string; sampai: string } | null {
+  // Input type=date memicu onChange di tiap perubahan, termasuk saat ruasnya
+  // dikosongkan atau tahunnya baru setengah diketik ("2" jadi tahun 0002).
+  const ms = keUtc(nilai);
+  if (ms === null || nilai < AWAL_LAPORAN || nilai > hariIni) return null;
+
+  return sisi === "dari"
+    ? { dari: nilai, sampai: nilai > sampai ? nilai : sampai }
+    : { dari: nilai < dari ? nilai : dari, sampai: nilai };
+}
+
+/**
+ * Grafik hanya memuat tujuh batang. Saat rentangnya lebih panjang, yang tampil
+ * adalah tujuh hari terakhir DARI RENTANG ITU — bukan tujuh hari terakhir dari
+ * hari ini, seperti yang dulu dijanjikan judulnya.
+ */
+export function judulGrafik(total: number, ditampilkan: number): string {
+  return ditampilkan < total
+    ? `Laba bersih ${ditampilkan} hari terakhir dalam rentang`
+    : "Laba bersih per hari";
+}
+
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
 /**

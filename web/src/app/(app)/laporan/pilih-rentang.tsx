@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition, type ReactNode } from "react";
+import { AWAL_LAPORAN, rentangSetelahUbah } from "@/lib/laporan";
 
 export function PilihRentang({
   dari,
@@ -25,6 +26,10 @@ export function PilihRentang({
     mulaiTransisi(() => {
       router.push(`/laporan?dari=${d}&sampai=${s}`);
     });
+  }
+  function ubah(sisi: "dari" | "sampai", nilai: string) {
+    const r = rentangSetelahUbah(sisi, nilai, dari, sampai, hariIni);
+    if (r) pergi(r.dari, r.sampai);
   }
   function mundur(hari: number): string {
     const t = new Date(`${hariIni}T00:00:00Z`);
@@ -58,11 +63,15 @@ export function PilihRentang({
             </button>
           );
         })}
+        {/* Kedua ujung dibatasi rentang yang sama, bukan saling mengunci:
+            batas yang saling menunjuk membuat bulan berikutnya tak bisa
+            dipilih sebelum ujung satunya digeser lebih dulu. */}
         <input
           type="date"
           value={dari}
-          max={sampai}
-          onChange={(e) => pergi(e.target.value, sampai)}
+          min={AWAL_LAPORAN}
+          max={hariIni}
+          onChange={(e) => ubah("dari", e.target.value)}
           aria-label="Tanggal mulai"
           className="rounded-lg border border-[var(--garis-kuat)] bg-white px-2 py-1 text-sm"
         />
@@ -70,9 +79,9 @@ export function PilihRentang({
         <input
           type="date"
           value={sampai}
-          min={dari}
+          min={AWAL_LAPORAN}
           max={hariIni}
-          onChange={(e) => pergi(dari, e.target.value)}
+          onChange={(e) => ubah("sampai", e.target.value)}
           aria-label="Tanggal akhir"
           className="rounded-lg border border-[var(--garis-kuat)] bg-white px-2 py-1 text-sm"
         />
