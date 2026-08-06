@@ -114,135 +114,135 @@ export default async function HalamanLaporan({
         {satuHari ? `Tanggal ${dari}` : `${dari} s/d ${sampai}`}
       </p>
       <div className="mt-3">
-        <PilihRentang dari={dari} sampai={sampai} hariIni={hariIni} />
-      </div>
-
-      <section className="relative mt-4 overflow-hidden rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4 pl-7">
-        <span
-          aria-hidden="true"
-          className="absolute bottom-0 left-4 top-0 w-px bg-[rgba(194,69,45,0.4)]"
-        />
-        <h2 className="display text-lg">Buku kas</h2>
-        <dl className="mt-2 space-y-1.5 text-sm">
-          <div className="flex justify-between">
-            <dt>
-              Omzet penjualan{" "}
-              <span className="text-[var(--pudar)]">
-                ({r.transaksi} transaksi)
-              </span>
-            </dt>
-            <dd className="uang">{formatRupiah(r.omzet)}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>HPP bahan terpakai</dt>
-            <dd className="uang">− {formatRupiah(r.hpp)}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>Pengeluaran operasional</dt>
-            <dd className="uang">− {formatRupiah(r.pengeluaran)}</dd>
-          </div>
-        </dl>
-        <div className="mt-4 text-center">
-          <div
-            className={`inline-block -rotate-2 rounded-[10px] border-[3px] px-7 pb-3 pt-2.5 ${
-              r.laba < 0
-                ? "border-[var(--merah)] text-[var(--merah)]"
-                : "border-[var(--hijau-daun)] text-[var(--hijau-tua)]"
-            }`}
-          >
-            <div className="display text-[13px] tracking-[0.16em]">
-              {satuHari ? "Laba bersih hari ini" : "Laba bersih"}
+        <PilihRentang dari={dari} sampai={sampai} hariIni={hariIni}>
+          <section className="relative mt-4 overflow-hidden rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4 pl-7">
+            <span
+              aria-hidden="true"
+              className="absolute bottom-0 left-4 top-0 w-px bg-[rgba(194,69,45,0.4)]"
+            />
+            <h2 className="display text-lg">Buku kas</h2>
+            <dl className="mt-2 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <dt>
+                  Omzet penjualan{" "}
+                  <span className="text-[var(--pudar)]">
+                    ({r.transaksi} transaksi)
+                  </span>
+                </dt>
+                <dd className="uang">{formatRupiah(r.omzet)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>HPP bahan terpakai</dt>
+                <dd className="uang">− {formatRupiah(r.hpp)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Pengeluaran operasional</dt>
+                <dd className="uang">− {formatRupiah(r.pengeluaran)}</dd>
+              </div>
+            </dl>
+            <div className="mt-4 text-center">
+              <div
+                className={`inline-block -rotate-2 rounded-[10px] border-[3px] px-7 pb-3 pt-2.5 ${
+                  r.laba < 0
+                    ? "border-[var(--merah)] text-[var(--merah)]"
+                    : "border-[var(--hijau-daun)] text-[var(--hijau-tua)]"
+                }`}
+              >
+                <div className="display text-[13px] tracking-[0.16em]">
+                  {satuHari ? "Laba bersih hari ini" : "Laba bersih"}
+                </div>
+                <div className="display text-4xl [font-variant-numeric:tabular-nums]">
+                  {formatRupiah(r.laba)}
+                </div>
+              </div>
             </div>
-            <div className="display text-4xl [font-variant-numeric:tabular-nums]">
-              {formatRupiah(r.laba)}
-            </div>
+          </section>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { l: "Tunai di laci", v: formatRupiah(r.tunai) },
+              { l: "Masuk QRIS", v: formatRupiah(r.qris) },
+              { l: "Transaksi", v: String(r.transaksi) },
+              {
+                l: "Rata-rata / transaksi",
+                v: formatRupiah(rataPerTransaksi(r.omzet, r.transaksi)),
+              },
+              { l: "Selisih tutup kasir", v: formatRupiah(selisih) },
+            ].map((s) => (
+              <div
+                key={s.l}
+                className="rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-3"
+              >
+                <p className="text-xs text-[var(--pudar)]">{s.l}</p>
+                <p className="uang mt-0.5 font-bold">{s.v}</p>
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {[
-          { l: "Tunai di laci", v: formatRupiah(r.tunai) },
-          { l: "Masuk QRIS", v: formatRupiah(r.qris) },
-          { l: "Transaksi", v: String(r.transaksi) },
-          {
-            l: "Rata-rata / transaksi",
-            v: formatRupiah(rataPerTransaksi(r.omzet, r.transaksi)),
-          },
-          { l: "Selisih tutup kasir", v: formatRupiah(selisih) },
-        ].map((s) => (
-          <div
-            key={s.l}
-            className="rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-3"
-          >
-            <p className="text-xs text-[var(--pudar)]">{s.l}</p>
-            <p className="uang mt-0.5 font-bold">{s.v}</p>
-          </div>
-        ))}
-      </div>
+          <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+            <GrafikLaba baris={harian} />
+          </section>
 
-      <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
-        <GrafikLaba baris={harian} />
-      </section>
+          <SectionTutupKasir
+            baris={tutup}
+            kosong={kosong}
+            log={log}
+            bolehKoreksi={bolehAkses(pengguna.izin, "user")}
+          />
 
-      <SectionTutupKasir
-        baris={tutup}
-        kosong={kosong}
-        log={log}
-        bolehKoreksi={bolehAkses(pengguna.izin, "user")}
-      />
-
-      {bulanan.length > 1 ? (
-        <section className="mt-4 overflow-x-auto rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
-          <h2 className="display text-lg">Rekap bulanan</h2>
-          <table className="mt-2 w-full min-w-[420px] text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase text-[var(--pudar)]">
-                <th className="py-1">Bulan</th>
-                <th className="py-1 text-right">Omzet</th>
-                <th className="py-1 text-right">HPP</th>
-                <th className="py-1 text-right">Pengeluaran</th>
-                <th className="py-1 text-right">Laba bersih</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bulanan.map((b) => (
-                <tr key={b.bulan} className="border-t border-[var(--garis)]">
-                  <td className="py-1">{b.bulan}</td>
-                  <td className="uang py-1 text-right">{formatRupiah(b.omzet)}</td>
-                  <td className="uang py-1 text-right">{formatRupiah(b.hpp)}</td>
-                  <td className="uang py-1 text-right">
-                    {formatRupiah(b.pengeluaran)}
-                  </td>
-                  <td
-                    className={`uang py-1 text-right font-bold ${
-                      b.laba < 0 ? "text-[var(--merah)]" : ""
-                    }`}
-                  >
-                    {formatRupiah(b.laba)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
-
-      <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
-        <h2 className="display text-lg">Terlaris</h2>
-        <ol className="mt-2 space-y-1 text-sm">
-          {terlaris.map((t, i) => (
-            <li key={t.nama} className="flex items-center gap-2">
-              <span className="w-5 text-[var(--pudar)]">{i + 1}</span>
-              <span className="min-w-0 flex-1">{t.nama}</span>
-              <b className="uang">{t.terjual}×</b>
-            </li>
-          ))}
-          {terlaris.length === 0 ? (
-            <li className="text-[var(--pudar)]">Belum ada penjualan.</li>
+          {bulanan.length > 1 ? (
+            <section className="mt-4 overflow-x-auto rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+              <h2 className="display text-lg">Rekap bulanan</h2>
+              <table className="mt-2 w-full min-w-[420px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase text-[var(--pudar)]">
+                    <th className="py-1">Bulan</th>
+                    <th className="py-1 text-right">Omzet</th>
+                    <th className="py-1 text-right">HPP</th>
+                    <th className="py-1 text-right">Pengeluaran</th>
+                    <th className="py-1 text-right">Laba bersih</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulanan.map((b) => (
+                    <tr key={b.bulan} className="border-t border-[var(--garis)]">
+                      <td className="py-1">{b.bulan}</td>
+                      <td className="uang py-1 text-right">{formatRupiah(b.omzet)}</td>
+                      <td className="uang py-1 text-right">{formatRupiah(b.hpp)}</td>
+                      <td className="uang py-1 text-right">
+                        {formatRupiah(b.pengeluaran)}
+                      </td>
+                      <td
+                        className={`uang py-1 text-right font-bold ${
+                          b.laba < 0 ? "text-[var(--merah)]" : ""
+                        }`}
+                      >
+                        {formatRupiah(b.laba)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
           ) : null}
-        </ol>
-      </section>
+
+          <section className="mt-4 rounded-xl border border-[var(--garis)] bg-[var(--enamel)] p-4">
+            <h2 className="display text-lg">Terlaris</h2>
+            <ol className="mt-2 space-y-1 text-sm">
+              {terlaris.map((t, i) => (
+                <li key={t.nama} className="flex items-center gap-2">
+                  <span className="w-5 text-[var(--pudar)]">{i + 1}</span>
+                  <span className="min-w-0 flex-1">{t.nama}</span>
+                  <b className="uang">{t.terjual}×</b>
+                </li>
+              ))}
+              {terlaris.length === 0 ? (
+                <li className="text-[var(--pudar)]">Belum ada penjualan.</li>
+              ) : null}
+            </ol>
+          </section>
+        </PilihRentang>
+      </div>
     </div>
   );
 }
