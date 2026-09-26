@@ -12,7 +12,11 @@ import {
   type BarisHarian,
 } from "@/lib/laporan";
 import { bolehAkses } from "@/lib/permissions";
-import type { BarisLog, BarisTutup } from "@/lib/tutup-kasir";
+import {
+  tunaiTersembunyiPerTanggal,
+  type BarisLog,
+  type BarisTutup,
+} from "@/lib/tutup-kasir";
 import { GrafikLaba } from "./grafik-laba";
 import { PilihRentang } from "./pilih-rentang";
 import { SectionTutupKasir } from "./section-tutup-kasir";
@@ -31,13 +35,25 @@ export default async function HalamanLaporan({
     hariIni
   );
 
+  const admin = bolehAkses(pengguna.izin, "user");
   const supabase = await buatClientServer();
-  const [harianRes, terlarisRes, tutupRes, logRes] = await Promise.all([
-    supabase.rpc("laporan_harian", { p_dari: dari, p_sampai: sampai }),
-    supabase.rpc("terlaris", { p_dari: dari, p_sampai: sampai, p_limit: 5 }),
-    supabase.rpc("daftar_tutup_kasir", { p_dari: dari, p_sampai: sampai }),
-    supabase.rpc("riwayat_tutup_kasir", { p_dari: dari, p_sampai: sampai }),
-  ]);
+  const [harianRes, terlarisRes, tutupRes, logRes, sembunyiRes] =
+    await Promise.all([
+      supabase.rpc("laporan_harian", { p_dari: dari, p_sampai: sampai }),
+      supabase.rpc("terlaris", { p_dari: dari, p_sampai: sampai, p_limit: 5 }),
+      supabase.rpc("daftar_tutup_kasir", { p_dari: dari, p_sampai: sampai }),
+      supabase.rpc("riwayat_tutup_kasir", { p_dari: dari, p_sampai: sampai }),
+      // Void tersembunyi hanya terbaca admin (RLS); pemegang izin laporan
+      // lainnya tidak perlu bertanya sama sekali.
+      admin
+        ? supabase
+            .from("sales")
+            .select("waktu, metode, sale_items(qty, harga)")
+            .eq("tersembunyi", true)
+            .gte("waktu", `${dari}T00:00:00+07:00`)
+            .lte("waktu", `${sampai}T23:59:59.999+07:00`)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
   if (harianRes.error) {
     throw new Error(`Gagal memuat laporan: ${harianRes.error.message}`);
   }
@@ -50,6 +66,14 @@ export default async function HalamanLaporan({
   if (logRes.error) {
     throw new Error(`Gagal memuat riwayat kasir: ${logRes.error.message}`);
   }
+  if (sembunyiRes.error) {
+    throw new Error(
+      `Gagal memuat void tersembunyi: ${sembunyiRes.error.message}`
+    );
+  }
+  const voidTersembunyi = tunaiTersembunyiPerTanggal(
+    (sembunyiRes.data ?? []) as Parameters<typeof tunaiTersembunyiPerTanggal>[0]
+  );
 
   const harian: BarisHarian[] = (
     (harianRes.data ?? []) as Record<string, unknown>[]
@@ -206,7 +230,8 @@ export default async function HalamanLaporan({
             baris={tutup}
             kosong={kosong}
             log={log}
-            bolehKoreksi={bolehAkses(pengguna.izin, "user")}
+            bolehKoreksi={admin}
+            voidTersembunyi={voidTersembunyi}
           />
 
           {bulanan.length > 1 ? (

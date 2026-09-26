@@ -88,3 +88,25 @@ export function kalimatRiwayat(b: BarisLog): string {
         : `Ditutup ulang ${uangLog(b.tunai_fisik_baru)}`;
   return `${inti} — ${b.oleh}, ${waktu}, "${b.alasan}"`;
 }
+
+/**
+ * Nominal void tersembunyi bertipe tunai per tanggal WIB. Hanya tunai yang
+ * relevan: angka inilah yang hilang dari tunai sistem padahal uangnya masih di
+ * laci, jadi pegawai yang jujur seharusnya melaporkan selisih lebih sebesar ini.
+ */
+export function tunaiTersembunyiPerTanggal(
+  baris: {
+    waktu: string;
+    metode: string;
+    sale_items: { qty: number; harga: number }[] | null;
+  }[]
+): Record<string, number> {
+  const hasil: Record<string, number> = {};
+  for (const b of baris) {
+    if (b.metode !== "tunai") continue;
+    const tanggal = tanggalJakarta(new Date(b.waktu));
+    const total = (b.sale_items ?? []).reduce((s, i) => s + i.qty * i.harga, 0);
+    hasil[tanggal] = (hasil[tanggal] ?? 0) + total;
+  }
+  return hasil;
+}

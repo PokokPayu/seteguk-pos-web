@@ -33,5 +33,7 @@ export type TransaksiRiwayat = {
   waktu: string;
   metode: "tunai" | "qris";
   status: "selesai" | "void";
+  /** Void tersembunyi — hanya pernah sampai ke admin (RLS). */
+  tersembunyi: boolean;
   items: ItemRiwayat[];
 };

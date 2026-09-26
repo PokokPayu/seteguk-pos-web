@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { wajibIzin } from "@/lib/auth";
+import { bolehAkses } from "@/lib/permissions";
 import { buatClientServer } from "@/lib/supabase/server";
 import { tanggalJakarta } from "@/lib/kasir";
 import { nominalValid, pesanErrorRpc } from "@/lib/tutup-kasir";
@@ -68,12 +69,20 @@ export async function catatPenjualan(
   };
 }
 
-export async function voidPenjualan(saleId: string): Promise<HasilAksi> {
-  await wajibIzin("void");
+export async function voidPenjualan(
+  saleId: string,
+  sembunyi = false
+): Promise<HasilAksi> {
+  const pengguna = await wajibIzin("void");
   if (!saleId) return { ok: false, pesan: "Transaksi tidak dikenali." };
+  // RPC juga menolaknya; dicek di sini supaya pesannya jelas.
+  if (sembunyi && !bolehAkses(pengguna.izin, "user")) {
+    return { ok: false, pesan: "Hanya admin yang bisa menyembunyikan void." };
+  }
   const supabase = await buatClientServer();
   const { error } = await supabase.rpc("void_penjualan", {
     p_sale_id: saleId,
+    p_sembunyi: sembunyi,
   });
   if (error) return { ok: false, pesan: error.message };
   revalidatePath("/kasir");

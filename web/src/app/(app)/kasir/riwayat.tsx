@@ -22,9 +22,12 @@ function totalTransaksi(t: TransaksiRiwayat): number {
 export function Riwayat({
   transaksi,
   bolehVoid,
+  bolehSembunyi,
 }: {
   transaksi: TransaksiRiwayat[];
   bolehVoid: boolean;
+  /** Admin: boleh void tersembunyi, dan melihat transaksi yang disembunyikan. */
+  bolehSembunyi: boolean;
 }) {
   const toast = useToast();
   const [konfirm, setKonfirm] = useState<TransaksiRiwayat | null>(null);
@@ -33,21 +36,31 @@ export function Riwayat({
   // memproses. Bila gagal, state kembali ke asal saat transisi selesai.
   const [optimis, tandaiVoid] = useOptimistic(
     transaksi,
-    (state, id: string) =>
-      state.map((t) => (t.id === id ? { ...t, status: "void" as const } : t))
+    (state, aksi: { id: string; sembunyi: boolean }) =>
+      state.map((t) =>
+        t.id === aksi.id
+          ? { ...t, status: "void" as const, tersembunyi: aksi.sembunyi }
+          : t
+      )
   );
 
   const selesai = optimis.filter((t) => t.status === "selesai");
   const omzet = selesai.reduce((s, t) => s + totalTransaksi(t), 0);
 
-  function konfirmasiVoid() {
+  function konfirmasiVoid(sembunyi: boolean) {
     if (!konfirm) return;
     const id = konfirm.id;
     setKonfirm(null);
     startTransition(async () => {
-      tandaiVoid(id);
-      const hasil = await voidPenjualan(id);
-      toast(hasil.ok ? "Transaksi dibatalkan — stok dikembalikan" : hasil.pesan);
+      tandaiVoid({ id, sembunyi });
+      const hasil = await voidPenjualan(id, sembunyi);
+      toast(
+        !hasil.ok
+          ? hasil.pesan
+          : sembunyi
+            ? "Transaksi dibatalkan & disembunyikan dari pegawai"
+            : "Transaksi dibatalkan — stok dikembalikan"
+      );
     });
   }
 
@@ -84,6 +97,11 @@ export function Riwayat({
                 {t.metode}
                 {t.status === "void" ? " · dibatalkan" : ""}
               </span>
+              {t.tersembunyi ? (
+                <span className="ml-1.5 inline-block rounded-full bg-[var(--kunyit)] px-2 py-px text-[10px] font-bold uppercase tracking-wide text-[#241F15] no-underline">
+                  Disembunyikan
+                </span>
+              ) : null}
             </span>
             <b className={`uang ${t.status === "void" ? "line-through" : ""}`}>
               {formatRupiah(totalTransaksi(t))}
@@ -119,22 +137,61 @@ export function Riwayat({
             dibatalkan dan stok bahan dikembalikan sesuai resep. Tindakan ini
             tidak bisa diurungkan.
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setKonfirm(null)}
-              className="rounded-lg border border-[var(--garis-kuat)] px-4 py-3 font-semibold text-[var(--pudar)]"
-            >
-              Kembali
-            </button>
-            <button
-              type="button"
-              onClick={konfirmasiVoid}
-              className="rounded-lg bg-[var(--merah)] px-4 py-3 font-bold text-white active:scale-[.99]"
-            >
-              Ya, batalkan
-            </button>
-          </div>
+          {bolehSembunyi ? (
+            <>
+              <ul className="mt-3 space-y-1.5 text-sm text-[var(--pudar)]">
+                <li>
+                  <b className="text-[var(--tinta)]">Void biasa</b> — tetap
+                  tampil tercoret di riwayat pegawai.
+                </li>
+                <li>
+                  <b className="text-[var(--tinta)]">Void & sembunyikan</b> —
+                  hilang dari riwayat, omzet, dan tunai sistem di layar
+                  pegawai. Hanya admin yang masih melihatnya.
+                </li>
+              </ul>
+              <div className="mt-4 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => konfirmasiVoid(false)}
+                  className="rounded-lg bg-[var(--merah)] px-4 py-3 font-bold text-white active:scale-[.99]"
+                >
+                  Void biasa (tercoret)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => konfirmasiVoid(true)}
+                  className="rounded-lg border-2 border-[var(--merah)] px-4 py-3 font-bold text-[var(--merah)] hover:bg-[var(--merah-bg)] active:scale-[.99]"
+                >
+                  Void & sembunyikan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKonfirm(null)}
+                  className="rounded-lg border border-[var(--garis-kuat)] px-4 py-3 font-semibold text-[var(--pudar)]"
+                >
+                  Kembali
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setKonfirm(null)}
+                className="rounded-lg border border-[var(--garis-kuat)] px-4 py-3 font-semibold text-[var(--pudar)]"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={() => konfirmasiVoid(false)}
+                className="rounded-lg bg-[var(--merah)] px-4 py-3 font-bold text-white active:scale-[.99]"
+              >
+                Ya, batalkan
+              </button>
+            </div>
+          )}
         </Lembar>
       ) : null}
     </div>

@@ -9,6 +9,7 @@ import {
   rentangSetelahUbah,
   rataPerTransaksi,
   ringkasRentang,
+  seriGrafik,
   type BarisHarian,
 } from "./laporan";
 
@@ -242,13 +243,84 @@ describe("rentangSetelahUbah", () => {
 });
 
 describe("judulGrafik", () => {
-  it("menyebut rentang saat yang tampil hanya sebagian", () => {
-    expect(judulGrafik(31, 7)).toBe("Laba bersih 7 hari terakhir dalam rentang");
+  it("menyebut satuan batangnya", () => {
+    expect(judulGrafik("hari")).toBe("Laba bersih per hari");
+    expect(judulGrafik("minggu")).toBe("Laba bersih per minggu");
+    expect(judulGrafik("bulan")).toBe("Laba bersih per bulan");
+  });
+});
+
+/** Satu baris per hari dari `dari`, laba = 1000 × urutan hari (1, 2, 3, …). */
+function rentangHarian(dari: string, n: number): BarisHarian[] {
+  const awal = Date.parse(`${dari}T00:00:00Z`);
+  return Array.from({ length: n }, (_, i) => {
+    const t = new Date(awal + i * 86_400_000).toISOString().slice(0, 10);
+    return baris(t, (i + 1) * 1000, 0, 0);
+  });
+}
+
+describe("seriGrafik", () => {
+  it("rentang kosong tidak punya batang", () => {
+    expect(seriGrafik([]).titik).toEqual([]);
   });
 
-  it("tidak mengaku 7 hari terakhir saat seluruh rentang tampil", () => {
-    expect(judulGrafik(7, 7)).toBe("Laba bersih per hari");
-    expect(judulGrafik(3, 3)).toBe("Laba bersih per hari");
-    expect(judulGrafik(1, 1)).toBe("Laba bersih per hari");
+  it("seminggu: satu batang per hari berlabel nama hari", () => {
+    const s = seriGrafik(rentangHarian("2026-08-02", 7));
+    expect(s.satuan).toBe("hari");
+    expect(s.titik.map((t) => t.label)).toEqual([
+      "Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab",
+    ]);
+    expect(s.titik.every((t) => t.tampilLabel)).toBe(true);
+  });
+
+  // Bug: grafik dulu memotong ke 7 hari terakhir apa pun rentangnya.
+  it("sebulan penuh: 31 batang harian, bukan 7", () => {
+    const s = seriGrafik(rentangHarian("2026-07-01", 31));
+    expect(s.satuan).toBe("hari");
+    expect(s.titik).toHaveLength(31);
+    expect(s.titik[0].label).toBe("1");
+    expect(s.titik[30].label).toBe("31");
+    expect(s.titik[30].laba).toBe(31000);
+  });
+
+  it("label rentang panjang dijarangkan tapi batang terakhir selalu berlabel", () => {
+    const s = seriGrafik(rentangHarian("2026-07-01", 31));
+    const tampil = s.titik.filter((t) => t.tampilLabel);
+    expect(tampil.length).toBeLessThanOrEqual(8);
+    expect(s.titik[30].tampilLabel).toBe(true);
+  });
+
+  it("32–92 hari: per minggu Senin–Minggu, laba dijumlah", () => {
+    // 1 Jul 2026 hari Rabu; 60 hari → s/d 29 Agu (Sabtu)
+    const harian = rentangHarian("2026-07-01", 60);
+    const s = seriGrafik(harian);
+    expect(s.satuan).toBe("minggu");
+    // minggu pertama terpotong: Rab 1 – Min 5 Jul = hari ke-1..5
+    expect(s.titik[0]).toMatchObject({
+      label: "1 Jul",
+      labelPanjang: "1 Jul – 5 Jul",
+      laba: (1 + 2 + 3 + 4 + 5) * 1000,
+    });
+    expect(s.titik[1].label).toBe("6 Jul");
+    expect(s.titik.at(-1)?.labelPanjang).toBe("24 Agu – 29 Agu");
+    const total = harian.reduce((x, b) => x + b.laba, 0);
+    expect(s.titik.reduce((x, t) => x + t.laba, 0)).toBe(total);
+  });
+
+  it("lebih dari 92 hari: per bulan", () => {
+    const harian = rentangHarian("2026-07-15", 120);
+    const s = seriGrafik(harian);
+    expect(s.satuan).toBe("bulan");
+    expect(s.titik.map((t) => t.label)).toEqual(["Jul", "Agu", "Sep", "Okt", "Nov"]);
+    // 15–31 Jul = hari ke-1..17
+    expect(s.titik[0].laba).toBe(((17 * 18) / 2) * 1000);
+    expect(s.titik[0].labelPanjang).toBe("Juli 2026");
+  });
+
+  it("batas: 31 hari masih harian, 32 hari sudah mingguan, 92 mingguan, 93 bulanan", () => {
+    expect(seriGrafik(rentangHarian("2026-07-01", 31)).satuan).toBe("hari");
+    expect(seriGrafik(rentangHarian("2026-07-01", 32)).satuan).toBe("minggu");
+    expect(seriGrafik(rentangHarian("2026-07-01", 92)).satuan).toBe("minggu");
+    expect(seriGrafik(rentangHarian("2026-07-01", 93)).satuan).toBe("bulan");
   });
 });

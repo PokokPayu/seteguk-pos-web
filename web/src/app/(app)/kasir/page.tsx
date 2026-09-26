@@ -37,7 +37,9 @@ export default async function HalamanKasir() {
       supabase.rpc("peringkat_varian"),
       supabase
         .from("sales")
-        .select("id, waktu, metode, status, sale_items(nama_snapshot, qty, harga)")
+        .select(
+          "id, waktu, metode, status, tersembunyi, sale_items(nama_snapshot, qty, harga)"
+        )
         .gte("waktu", awalHariJakarta(new Date()))
         .order("waktu", { ascending: false }),
       supabase
@@ -71,6 +73,7 @@ export default async function HalamanKasir() {
       waktu: string;
       metode: "tunai" | "qris";
       status: "selesai" | "void";
+      tersembunyi: boolean;
       sale_items: { nama_snapshot: string; qty: number; harga: number }[] | null;
     };
     return {
@@ -78,6 +81,7 @@ export default async function HalamanKasir() {
       waktu: baris.waktu,
       metode: baris.metode,
       status: baris.status,
+      tersembunyi: baris.tersembunyi,
       items: baris.sale_items ?? [],
     };
   }) as TransaksiRiwayat[];
@@ -138,6 +142,10 @@ export default async function HalamanKasir() {
           produk={daftar}
           riwayat={riwayat}
           bolehVoid={bolehAkses(pengguna.izin, "void")}
+          bolehSembunyi={
+            bolehAkses(pengguna.izin, "void") &&
+            bolehAkses(pengguna.izin, "user")
+          }
           tunaiSistem={tunaiSistem}
           sudahDitutup={sudahDitutup}
         />

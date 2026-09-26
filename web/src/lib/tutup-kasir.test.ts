@@ -6,6 +6,7 @@ import {
   nominalValid,
   pesanErrorRpc,
   tanggalValid,
+  tunaiTersembunyiPerTanggal,
   type BarisLog,
 } from "./tutup-kasir";
 
@@ -162,5 +163,28 @@ describe("kalimatRiwayat", () => {
     ).toBe(
       'Kasir dibuka kembali (fisik (tidak tercatat)) — Arvin, 3 Agu 2026, "kasir salah pencet"'
     );
+  });
+});
+
+describe("tunaiTersembunyiPerTanggal", () => {
+  it("menjumlah tunai per tanggal WIB, QRIS diabaikan", () => {
+    expect(
+      tunaiTersembunyiPerTanggal([
+        // 23:30 WIB 1 Agu
+        { waktu: "2026-08-01T16:30:00Z", metode: "tunai", sale_items: [{ qty: 2, harga: 15000 }] },
+        // 00:30 WIB 2 Agu — sudah tanggal berikutnya di WIB
+        { waktu: "2026-08-01T17:30:00Z", metode: "tunai", sale_items: [{ qty: 1, harga: 20000 }] },
+        { waktu: "2026-08-02T03:00:00Z", metode: "tunai", sale_items: [{ qty: 1, harga: 5000 }, { qty: 1, harga: 7000 }] },
+        { waktu: "2026-08-02T04:00:00Z", metode: "qris", sale_items: [{ qty: 1, harga: 99000 }] },
+      ])
+    ).toEqual({ "2026-08-01": 30000, "2026-08-02": 32000 });
+  });
+
+  it("item null dianggap nol", () => {
+    expect(
+      tunaiTersembunyiPerTanggal([
+        { waktu: "2026-08-01T03:00:00Z", metode: "tunai", sale_items: null },
+      ])
+    ).toEqual({ "2026-08-01": 0 });
   });
 });

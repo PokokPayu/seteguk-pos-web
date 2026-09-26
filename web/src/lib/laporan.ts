@@ -181,15 +181,10 @@ export function rentangSetelahUbah(
     : { dari: nilai < dari ? nilai : dari, sampai: nilai };
 }
 
-/**
- * Grafik hanya memuat tujuh batang. Saat rentangnya lebih panjang, yang tampil
- * adalah tujuh hari terakhir DARI RENTANG ITU — bukan tujuh hari terakhir dari
- * hari ini, seperti yang dulu dijanjikan judulnya.
- */
-export function judulGrafik(total: number, ditampilkan: number): string {
-  return ditampilkan < total
-    ? `Laba bersih ${ditampilkan} hari terakhir dalam rentang`
-    : "Laba bersih per hari";
+export type SatuanGrafik = "hari" | "minggu" | "bulan";
+
+export function judulGrafik(satuan: SatuanGrafik): string {
+  return `Laba bersih per ${satuan}`;
 }
 
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -203,4 +198,97 @@ const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 export function labelHari(tanggal: string): string {
   const d = new Date(`${tanggal}T00:00:00Z`);
   return HARI[d.getUTCDay()] ?? tanggal;
+}
+
+export type TitikGrafik = {
+  kunci: string;
+  /** Label pendek di bawah batang. */
+  label: string;
+  /** Label lengkap untuk tabel, tooltip, dan pembaca layar. */
+  labelPanjang: string;
+  laba: number;
+  /** Label pendek dijarangkan supaya tidak bertumpuk di layar sempit. */
+  tampilLabel: boolean;
+};
+
+// Di atas 31 batang, batang harian terlalu tipis dibaca di HP — sebulan penuh
+// masih harian, tiga bulan jadi mingguan, lebih dari itu bulanan.
+const MAKS_BATANG_HARIAN = 31;
+const MAKS_HARI_MINGGUAN = 92;
+const MAKS_LABEL = 8;
+
+const BULAN_PENDEK = new Intl.DateTimeFormat("id-ID", {
+  month: "short",
+  timeZone: "UTC",
+});
+const BULAN_PANJANG = new Intl.DateTimeFormat("id-ID", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function tanggalPendek(tanggal: string): string {
+  const d = new Date(`${tanggal}T00:00:00Z`);
+  return `${d.getUTCDate()} ${BULAN_PENDEK.format(d)}`;
+}
+
+/** Senin pada minggu tanggal ini (YYYY-MM-DD). */
+function seninnya(tanggal: string): string {
+  const d = new Date(`${tanggal}T00:00:00Z`);
+  const mundur = (d.getUTCDay() + 6) % 7;
+  return keTanggal(d.getTime() - mundur * SEHARI_MS);
+}
+
+/**
+ * Batang grafik laba untuk seluruh rentang terpilih — tidak dipotong. Rentang
+ * yang terlalu panjang untuk batang harian dikelompokkan per minggu (Senin–
+ * Minggu) atau per bulan; kelompok di tepi rentang boleh terpotong.
+ */
+export function seriGrafik(baris: BarisHarian[]): {
+  satuan: SatuanGrafik;
+  titik: TitikGrafik[];
+} {
+  const satuan: SatuanGrafik =
+    baris.length <= MAKS_BATANG_HARIAN
+      ? "hari"
+      : baris.length <= MAKS_HARI_MINGGUAN
+        ? "minggu"
+        : "bulan";
+
+  const kelompok = new Map<string, BarisHarian[]>();
+  for (const b of baris) {
+    const kunci =
+      satuan === "hari"
+        ? b.tanggal
+        : satuan === "minggu"
+          ? seninnya(b.tanggal)
+          : b.tanggal.slice(0, 7);
+    const isi = kelompok.get(kunci);
+    if (isi) isi.push(b);
+    else kelompok.set(kunci, [b]);
+  }
+
+  const n = kelompok.size;
+  const langkah = satuan === "hari" && n <= 7 ? 1 : Math.ceil(n / MAKS_LABEL);
+  const titik = [...kelompok.entries()].map(([kunci, isi], i) => {
+    const awal = isi[0].tanggal;
+    const akhir = isi[isi.length - 1].tanggal;
+    const laba = isi.reduce((s, b) => s + b.laba, 0);
+    const [label, labelPanjang] =
+      satuan === "hari"
+        ? [
+            n <= 7 ? labelHari(awal) : String(Number(awal.slice(8))),
+            `${labelHari(awal)}, ${awal}`,
+          ]
+        : satuan === "minggu"
+          ? [tanggalPendek(awal), `${tanggalPendek(awal)} – ${tanggalPendek(akhir)}`]
+          : [
+              BULAN_PENDEK.format(new Date(`${awal}T00:00:00Z`)),
+              BULAN_PANJANG.format(new Date(`${awal}T00:00:00Z`)),
+            ];
+    // Dihitung dari belakang supaya batang terakhir (paling kini) selalu berlabel.
+    return { kunci, label, labelPanjang, laba, tampilLabel: (n - 1 - i) % langkah === 0 };
+  });
+
+  return { satuan, titik };
 }

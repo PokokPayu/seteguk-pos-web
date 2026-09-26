@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lembar } from "@/components/lembar";
 import { formatRupiah } from "@/lib/format";
+import { saringMenu } from "@/lib/kasir";
 import { terbangKeKeranjang } from "./terbang";
 import type { ProdukKasir } from "./jenis";
 
@@ -18,14 +19,50 @@ export function GridMenu({
   onPilihVarian: (produkId: string, variantId: string) => void;
 }) {
   const [kategori, setKategori] = useState("Semua");
+  const [cari, setCari] = useState("");
   const [pilihUntuk, setPilihUntuk] = useState<ProdukKasir | null>(null);
 
   const daftarKategori = ["Semua", ...new Set(produk.map((p) => p.kategori))];
-  const tampil =
-    kategori === "Semua" ? produk : produk.filter((p) => p.kategori === kategori);
+  const tampil = saringMenu(produk, kategori, cari);
 
   return (
     <div>
+      <div className="relative mb-3">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--pudar)]"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          type="search"
+          value={cari}
+          onChange={(e) => setCari(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setCari("");
+          }}
+          placeholder="Cari menu…"
+          aria-label="Cari menu"
+          className="w-full rounded-lg border border-[var(--garis-kuat)] bg-white py-2.5 pl-9 pr-10 text-base [&::-webkit-search-cancel-button]:hidden"
+        />
+        {cari ? (
+          <button
+            type="button"
+            onClick={() => setCari("")}
+            aria-label="Kosongkan pencarian"
+            className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-lg leading-none text-[var(--pudar)] hover:bg-[#EDE7D6]"
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-2">
         {daftarKategori.map((k) => (
           <button
@@ -85,7 +122,13 @@ export function GridMenu({
         })}
         {tampil.length === 0 ? (
           <p className="col-span-full rounded-xl border border-dashed border-[var(--garis-kuat)] bg-[var(--enamel)] p-6 text-sm text-[var(--pudar)]">
-            Belum ada menu aktif. Tambahkan lewat halaman Menu.
+            {produk.length === 0
+              ? "Belum ada menu aktif. Tambahkan lewat halaman Menu."
+              : cari.trim()
+                ? `Tidak ada menu yang cocok dengan “${cari.trim()}”${
+                    kategori === "Semua" ? "" : ` di kategori ${kategori}`
+                  }.`
+                : "Tidak ada menu di kategori ini."}
           </p>
         ) : null}
       </div>

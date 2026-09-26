@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   awalHariJakarta,
   hitungKembalian,
+  saringMenu,
   tanggalJakarta,
   totalKeranjang,
 } from "./kasir";
@@ -51,5 +52,38 @@ describe("awalHariJakarta", () => {
     expect(awalHariJakarta(new Date("2026-07-24T20:00:00Z"))).toBe(
       "2026-07-25T00:00:00+07:00"
     );
+  });
+});
+
+describe("saringMenu", () => {
+  const menu = [
+    { nama: "Kopi Susu", kategori: "Kopi", varian: [{ nama: "Es" }, { nama: "Panas" }] },
+    { nama: "Americano", kategori: "Kopi", varian: [{ nama: "Es" }] },
+    { nama: "Teh Tarik", kategori: "Non-kopi", varian: [{ nama: "Panas" }] },
+    { nama: "Roti Bakar", kategori: "Makanan", varian: [{ nama: "Coklat" }] },
+  ];
+  const nama = (hasil: { nama: string }[]) => hasil.map((m) => m.nama);
+
+  it("tanpa kata kunci hanya menyaring kategori", () => {
+    expect(nama(saringMenu(menu, "Semua", ""))).toHaveLength(4);
+    expect(nama(saringMenu(menu, "Kopi", "   "))).toEqual(["Kopi Susu", "Americano"]);
+  });
+
+  it("mencocokkan nama menu tanpa peduli huruf besar/kecil", () => {
+    expect(nama(saringMenu(menu, "Semua", "TEH"))).toEqual(["Teh Tarik"]);
+  });
+
+  it("mencocokkan nama varian", () => {
+    expect(nama(saringMenu(menu, "Semua", "coklat"))).toEqual(["Roti Bakar"]);
+  });
+
+  it("setiap kata harus ada, di nama menu atau variannya", () => {
+    expect(nama(saringMenu(menu, "Semua", "kopi es"))).toEqual(["Kopi Susu"]);
+    expect(nama(saringMenu(menu, "Semua", "es panas"))).toEqual(["Kopi Susu"]);
+  });
+
+  it("kata kunci digabung dengan kategori terpilih", () => {
+    expect(nama(saringMenu(menu, "Non-kopi", "panas"))).toEqual(["Teh Tarik"]);
+    expect(nama(saringMenu(menu, "Makanan", "kopi"))).toEqual([]);
   });
 });

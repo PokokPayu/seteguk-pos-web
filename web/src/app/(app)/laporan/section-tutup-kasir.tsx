@@ -19,6 +19,18 @@ type Aksi =
   | { jenis: "buka"; baris: BarisTutup }
   | { jenis: "tutup"; tanggal: string; tunaiSistem: number };
 
+/** Pengingat untuk admin: selisih jujur seharusnya lebih sebesar ini. */
+function TandaTersembunyi({ nominal }: { nominal: number | undefined }) {
+  if (!nominal) return null;
+  return (
+    <span className="mt-0.5 block w-fit rounded bg-[var(--kunyit-bg)] px-1.5 py-px text-xs text-[#6B4E0B]">
+      Void tersembunyi tunai{" "}
+      <b className="uang">{formatRupiah(nominal)}</b> — selisih jujur ≈ +
+      {formatRupiah(nominal)}
+    </span>
+  );
+}
+
 function Riwayat({ log }: { log: BarisLog[] }) {
   if (log.length === 0) return null;
   return (
@@ -95,11 +107,14 @@ export function SectionTutupKasir({
   kosong,
   log,
   bolehKoreksi,
+  voidTersembunyi,
 }: {
   baris: BarisTutup[];
   kosong: { tanggal: string; tunaiSistem: number }[];
   log: BarisLog[];
   bolehKoreksi: boolean;
+  /** Tunai void tersembunyi per tanggal; kosong untuk non-admin. */
+  voidTersembunyi: Record<string, number>;
 }) {
   const toast = useToast();
   const [aksi, setAksi] = useState<Aksi | null>(null);
@@ -137,6 +152,7 @@ export function SectionTutupKasir({
                     {b.catatan}
                   </span>
                 ) : null}
+                <TandaTersembunyi nominal={voidTersembunyi[b.tanggal]} />
               </td>
               <td className="uang py-1.5 text-right">
                 {formatRupiah(b.tunai_sistem)}
@@ -174,7 +190,10 @@ export function SectionTutupKasir({
           ))}
           {kosong.map((k) => (
             <tr key={k.tanggal} className="border-t border-[var(--garis)]">
-              <td className="py-1.5">{formatTanggalPendek(k.tanggal)}</td>
+              <td className="py-1.5">
+                {formatTanggalPendek(k.tanggal)}
+                <TandaTersembunyi nominal={voidTersembunyi[k.tanggal]} />
+              </td>
               <td className="uang py-1.5 text-right">
                 {formatRupiah(k.tunaiSistem)}
               </td>

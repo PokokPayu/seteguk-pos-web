@@ -26,12 +26,14 @@ export function LayarKasir({
   produk,
   riwayat,
   bolehVoid,
+  bolehSembunyi,
   tunaiSistem,
   sudahDitutup,
 }: {
   produk: ProdukKasir[];
   riwayat: TransaksiRiwayat[];
   bolehVoid: boolean;
+  bolehSembunyi: boolean;
   tunaiSistem: number;
   sudahDitutup: { tunai_fisik: number; selisih: number } | null;
 }) {
@@ -177,7 +179,11 @@ export function LayarKasir({
 
       <div className="mt-4">
         {tab === "riwayat" ? (
-          <Riwayat transaksi={riwayat} bolehVoid={bolehVoid} />
+          <Riwayat
+            transaksi={riwayat}
+            bolehVoid={bolehVoid}
+            bolehSembunyi={bolehSembunyi}
+          />
         ) : (
           <>
             <div className="grid gap-4 desktop:grid-cols-[1fr_340px]">
